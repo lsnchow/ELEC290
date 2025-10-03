@@ -3,16 +3,25 @@ HC-SR04 Ultrasonic Sensor Module
 Measures distance using GPIO pins with proper timing
 Compatible with Raspberry Pi 5 using gpiod
 """
+import time
+import threading
+import os
+
+USE_GPIOD = False
+USE_RPIGPIO = False
+
 try:
     import gpiod
     from gpiod.line import Direction, Value
     USE_GPIOD = True
+    print("Using gpiod library")
 except ImportError:
-    import RPi.GPIO as GPIO
-    USE_GPIOD = False
-
-import time
-import threading
+    try:
+        import RPi.GPIO as GPIO
+        USE_RPIGPIO = True
+        print("Using RPi.GPIO library")
+    except (ImportError, RuntimeError):
+        print("Warning: No GPIO library available. Ultrasonic sensor will return dummy data.")
 
 
 class UltrasonicSensor:
@@ -28,6 +37,7 @@ class UltrasonicSensor:
         self.echo_pin = echo_pin
         self.distance = 0
         self.running = False
+        self.dummy_mode = False
         
         if USE_GPIOD:
             # Use gpiod for Raspberry Pi 5
@@ -53,7 +63,7 @@ class UltrasonicSensor:
             
             self.trig_line.set_value(0)
             print(f"Ultrasonic sensor initialized (gpiod) on TRIG={trig_pin}, ECHO={echo_pin}")
-        else:
+        elif USE_RPIGPIO:
             # Use RPi.GPIO for older Pi models
             GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
@@ -61,6 +71,12 @@ class UltrasonicSensor:
             GPIO.setup(self.echo_pin, GPIO.IN)
             GPIO.output(self.trig_pin, False)
             print(f"Ultrasonic sensor initialized (RPi.GPIO) on TRIG={trig_pin}, ECHO={echo_pin}")
+        else:
+            # No GPIO library available - use dummy mode
+            self.dummy_mode = True
+            print(f"⚠️  Ultrasonic sensor in DUMMY MODE (no GPIO library available)")
+            print(f"   Install gpiod: pip install gpiod")
+            print(f"   Sensor will return simulated distance data")
         
         time.sleep(0.1)
     
@@ -71,6 +87,11 @@ class UltrasonicSensor:
         Returns:
             float: Distance in cm, or -1 if measurement failed
         """
+        # Return dummy data if no GPIO library
+        if self.dummy_mode:
+            import random
+            return round(random.uniform(20, 100), 1)
+        
         try:
             if USE_GPIOD:
                 # Send 10us pulse to trigger
@@ -172,16 +193,19 @@ class UltrasonicSensor:
     def cleanup(self):
         """Clean up GPIO pins"""
         self.stop_continuous_reading()
-        if USE_GPIOD:
+        if self.dummy_mode:
+            print("Dummy mode cleanup complete")
+        elif USE_GPIOD:
             if hasattr(self, 'trig_line'):
                 self.trig_line.release()
             if hasattr(self, 'echo_line'):
                 self.echo_line.release()
             if hasattr(self, 'chip'):
                 self.chip.close()
-        else:
+            print("GPIO cleanup complete (gpiod)")
+        elif USE_RPIGPIO:
             GPIO.cleanup([self.trig_pin, self.echo_pin])
-        print("GPIO cleanup complete")
+            print("GPIO cleanup complete (RPi.GPIO)")
 
 
 # Test code
