@@ -59,9 +59,8 @@ class UltrasonicSensor:
                 print("⚠️  Could not access any GPIO chip with gpiod")
                 print("   Falling back to dummy mode")
                 self.dummy_mode = True
-                USE_GPIOD = False
         
-        if USE_GPIOD and not self.dummy_mode:
+        if USE_GPIOD and hasattr(self, 'chip') and not self.dummy_mode:
             try:
                 self.trig_line = self.chip.get_line(self.trig_pin)
                 self.echo_line = self.chip.get_line(self.echo_pin)
