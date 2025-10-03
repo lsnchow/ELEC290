@@ -1,0 +1,147 @@
+"""
+HC-SR04 Ultrasonic Sensor Module
+Measures distance using GPIO pins with proper timing
+"""
+import RPi.GPIO as GPIO
+import time
+import threading
+
+
+class UltrasonicSensor:
+    def __init__(self, trig_pin=23, echo_pin=24):
+        """
+        Initialize the HC-SR04 ultrasonic sensor
+        
+        Args:
+            trig_pin: GPIO pin number for trigger (default: 23)
+            echo_pin: GPIO pin number for echo (default: 24)
+        """
+        self.trig_pin = trig_pin
+        self.echo_pin = echo_pin
+        self.distance = 0
+        self.running = False
+        
+        # Setup GPIO
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(self.trig_pin, GPIO.OUT)
+        GPIO.setup(self.echo_pin, GPIO.IN)
+        
+        # Ensure trigger is low
+        GPIO.output(self.trig_pin, False)
+        print(f"Ultrasonic sensor initialized on TRIG={trig_pin}, ECHO={echo_pin}")
+        time.sleep(0.1)
+    
+    def measure_distance(self):
+        """
+        Measure distance in centimeters
+        
+        Returns:
+            float: Distance in cm, or -1 if measurement failed
+        """
+        try:
+            # Send 10us pulse to trigger
+            GPIO.output(self.trig_pin, True)
+            time.sleep(0.00001)  # 10 microseconds
+            GPIO.output(self.trig_pin, False)
+            
+            # Wait for echo to start (with timeout)
+            pulse_start = time.time()
+            timeout = pulse_start + 0.1  # 100ms timeout
+            
+            while GPIO.input(self.echo_pin) == 0:
+                pulse_start = time.time()
+                if pulse_start > timeout:
+                    return -1
+            
+            # Wait for echo to end (with timeout)
+            pulse_end = time.time()
+            timeout = pulse_end + 0.1
+            
+            while GPIO.input(self.echo_pin) == 1:
+                pulse_end = time.time()
+                if pulse_end > timeout:
+                    return -1
+            
+            # Calculate distance
+            pulse_duration = pulse_end - pulse_start
+            # Speed of sound is 343 m/s or 34300 cm/s
+            # Distance = (Time × Speed) / 2 (divided by 2 for round trip)
+            distance = (pulse_duration * 34300) / 2
+            
+            # Valid range for HC-SR04 is 2cm to 400cm
+            if 2 <= distance <= 400:
+                return round(distance, 1)
+            else:
+                return -1
+                
+        except Exception as e:
+            print(f"Error measuring distance: {e}")
+            return -1
+    
+    def start_continuous_reading(self, interval=0.1):
+        """
+        Start continuous distance reading in background thread
+        
+        Args:
+            interval: Time between measurements in seconds (default: 0.1)
+        """
+        self.running = True
+        
+        def read_loop():
+            while self.running:
+                measurement = self.measure_distance()
+                if measurement != -1:
+                    self.distance = measurement
+                time.sleep(interval)
+        
+        self.thread = threading.Thread(target=read_loop, daemon=True)
+        self.thread.start()
+        print("Continuous distance reading started")
+    
+    def stop_continuous_reading(self):
+        """Stop continuous distance reading"""
+        self.running = False
+        if hasattr(self, 'thread'):
+            self.thread.join(timeout=1)
+        print("Continuous distance reading stopped")
+    
+    def get_distance(self):
+        """
+        Get the latest distance reading
+        
+        Returns:
+            float: Distance in cm
+        """
+        return self.distance
+    
+    def cleanup(self):
+        """Clean up GPIO pins"""
+        self.stop_continuous_reading()
+        GPIO.cleanup([self.trig_pin, self.echo_pin])
+        print("GPIO cleanup complete")
+
+
+# Test code
+if __name__ == "__main__":
+    print("Testing HC-SR04 Ultrasonic Sensor")
+    print("Press Ctrl+C to exit\n")
+    
+    sensor = UltrasonicSensor()
+    
+    try:
+        sensor.start_continuous_reading(interval=0.2)
+        
+        while True:
+            distance = sensor.get_distance()
+            if distance > 0:
+                print(f"Distance: {distance:.1f} cm")
+            else:
+                print("Out of range or error")
+            time.sleep(0.5)
+            
+    except KeyboardInterrupt:
+        print("\n\nStopping...")
+    finally:
+        sensor.cleanup()
+        print("Test complete")

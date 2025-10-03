@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human Detection & Distance Monitor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 900px;
+            width: 100%;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            background: #000;
+        }
+        
+        #video-stream {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .info-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .info-card {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .info-card h3 {
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+        
+        .info-card .value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #4ade80;
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 0 10px;
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+        
+        footer {
+            margin-top: 30px;
+            text-align: center;
+            opacity: 0.7;
+            font-size: 0.9rem;
+        }
+        
+        .error-message {
+            background: rgba(239, 68, 68, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            text-align: center;
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>🎥 Human Detection & Distance Monitor</h1>
+        <p class="subtitle">
+            <span class="status-indicator"></span>
+            Live streaming from Raspberry Pi
+        </p>
+    </header>
+    
+    <div class="container">
+        <div class="video-container">
+            <img id="video-stream" src="{{ url_for('video_feed') }}" alt="Video Stream">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <div>Loading stream...</div>
+            </div>
+        </div>
+        
+        <div class="error-message" id="error-message">
+            ⚠️ Connection lost. Please check if the server is running.
+        </div>
+        
+        <div class="info-panel">
+            <div class="info-card">
+                <h3>System Status</h3>
+                <div class="value">🟢 Active</div>
+            </div>
+            <div class="info-card">
+                <h3>Detection Model</h3>
+                <div class="value" style="font-size: 1.3rem;">YOLOv8</div>
+            </div>
+            <div class="info-card">
+                <h3>Camera</h3>
+                <div class="value" style="font-size: 1.3rem;">640x480</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn" onclick="refreshStream()">🔄 Refresh Stream</button>
+            <button class="btn" onclick="openFullscreen()">⛶ Fullscreen</button>
+        </div>
+    </div>
+    
+    <footer>
+        <p>Raspberry Pi 5 • YOLOv8 Detection • HC-SR04 Ultrasonic Sensor</p>
+        <p style="margin-top: 5px; font-size: 0.8rem;">
+            Detection data overlaid on video feed
+        </p>
+    </footer>
+    
+    <script>
+        const videoStream = document.getElementById('video-stream');
+        const loading = document.getElementById('loading');
+        const errorMessage = document.getElementById('error-message');
+        
+        // Hide loading spinner when stream loads
+        videoStream.onload = function() {
+            loading.style.display = 'none';
+        };
+        
+        // Handle stream errors
+        videoStream.onerror = function() {
+            loading.style.display = 'none';
+            errorMessage.style.display = 'block';
+            
+            // Try to reconnect after 5 seconds
+            setTimeout(refreshStream, 5000);
+        };
+        
+        // Refresh stream function
+        function refreshStream() {
+            const timestamp = new Date().getTime();
+            videoStream.src = "{{ url_for('video_feed') }}?t=" + timestamp;
+            errorMessage.style.display = 'none';
+            loading.style.display = 'block';
+        }
+        
+        // Fullscreen function
+        function openFullscreen() {
+            const container = document.querySelector('.video-container');
+            if (container.requestFullscreen) {
+                container.requestFullscreen();
+            } else if (container.webkitRequestFullscreen) {
+                container.webkitRequestFullscreen();
+            } else if (container.msRequestFullscreen) {
+                container.msRequestFullscreen();
+            }
+        }
+        
+        // Check server status periodically
+        setInterval(async function() {
+            try {
+                const response = await fetch('/status');
+                if (response.ok) {
+                    errorMessage.style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+            }
+        }, 10000); // Check every 10 seconds
+    </script>
+</body>
+</html>
