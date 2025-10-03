@@ -25,14 +25,42 @@ class HumanDetector:
         self.camera_index = camera_index
         self.resolution = resolution
         
-        # Initialize camera
-        self.cap = cv2.VideoCapture(camera_index)
+        # Initialize camera - try to find working camera
+        self.cap = None
+        cameras_to_try = [camera_index, 0, 1, 2, '/dev/video0', '/dev/video1']
+        
+        for cam_id in cameras_to_try:
+            try:
+                print(f"Trying camera: {cam_id}")
+                test_cap = cv2.VideoCapture(cam_id)
+                if test_cap.isOpened():
+                    # Test if we can actually read a frame
+                    ret, _ = test_cap.read()
+                    if ret:
+                        self.cap = test_cap
+                        self.camera_index = cam_id
+                        print(f"✓ Successfully opened camera: {cam_id}")
+                        break
+                    else:
+                        test_cap.release()
+                else:
+                    test_cap.release()
+            except Exception as e:
+                print(f"  Failed: {e}")
+                continue
+        
+        if self.cap is None or not self.cap.isOpened():
+            raise RuntimeError(
+                "Could not find any working camera. Check:\n"
+                "  1. Camera is connected (USB or ribbon cable)\n"
+                "  2. Run 'ls /dev/video*' to see available cameras\n"
+                "  3. Run 'v4l2-ctl --list-devices' for more info"
+            )
+        
+        # Set camera properties
         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, resolution[0])
         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution[1])
         self.cap.set(cv2.CAP_PROP_FPS, 30)
-        
-        if not self.cap.isOpened():
-            raise Exception(f"Failed to open camera at index {camera_index}")
         
         print(f"Camera initialized: {resolution[0]}x{resolution[1]}")
         
