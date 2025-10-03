@@ -41,28 +41,40 @@ class UltrasonicSensor:
         
         if USE_GPIOD:
             # Use gpiod for Raspberry Pi 5
-            # Try different chip numbers (Pi 5 uses gpiochip4, older models use gpiochip0)
+            # Try different chip numbers (Pi 5 uses gpiochip4->gpiochip0, older models use gpiochip0)
             chip_found = False
-            for chip_num in [4, 0]:
+            for chip_num in [4, 0, 1, 2, 3]:
                 try:
-                    self.chip = gpiod.Chip(f'gpiochip{chip_num}')
+                    chip_path = f'/dev/gpiochip{chip_num}'
+                    print(f"Trying {chip_path}...")
+                    self.chip = gpiod.Chip(chip_path)
                     chip_found = True
-                    print(f"Using gpiochip{chip_num}")
+                    print(f"✓ Using gpiochip{chip_num}")
                     break
-                except FileNotFoundError:
+                except (FileNotFoundError, PermissionError, OSError) as e:
+                    print(f"  Failed: {e}")
                     continue
             
             if not chip_found:
-                raise RuntimeError("Could not find GPIO chip. Try running with sudo or check /dev/gpiochip*")
-            
-            self.trig_line = self.chip.get_line(self.trig_pin)
-            self.echo_line = self.chip.get_line(self.echo_pin)
-            
-            self.trig_line.request(consumer="ultrasonic", type=gpiod.LINE_REQ_DIR_OUT)
-            self.echo_line.request(consumer="ultrasonic", type=gpiod.LINE_REQ_DIR_IN)
-            
-            self.trig_line.set_value(0)
-            print(f"Ultrasonic sensor initialized (gpiod) on TRIG={trig_pin}, ECHO={echo_pin}")
+                print("⚠️  Could not access any GPIO chip with gpiod")
+                print("   Falling back to dummy mode")
+                self.dummy_mode = True
+                USE_GPIOD = False
+        
+        if USE_GPIOD and not self.dummy_mode:
+            try:
+                self.trig_line = self.chip.get_line(self.trig_pin)
+                self.echo_line = self.chip.get_line(self.echo_pin)
+                
+                self.trig_line.request(consumer="ultrasonic", type=gpiod.LINE_REQ_DIR_OUT)
+                self.echo_line.request(consumer="ultrasonic", type=gpiod.LINE_REQ_DIR_IN)
+                
+                self.trig_line.set_value(0)
+                print(f"Ultrasonic sensor initialized (gpiod) on TRIG={trig_pin}, ECHO={echo_pin}")
+            except Exception as e:
+                print(f"Failed to initialize GPIO lines: {e}")
+                print("Falling back to dummy mode")
+                self.dummy_mode = True
         elif USE_RPIGPIO:
             # Use RPi.GPIO for older Pi models
             GPIO.setmode(GPIO.BCM)
