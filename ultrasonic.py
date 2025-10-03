@@ -1,8 +1,16 @@
 """
 HC-SR04 Ultrasonic Sensor Module
 Measures distance using GPIO pins with proper timing
+Compatible with Raspberry Pi 5 using gpiod
 """
-import RPi.GPIO as GPIO
+try:
+    import gpiod
+    from gpiod.line import Direction, Value
+    USE_GPIOD = True
+except ImportError:
+    import RPi.GPIO as GPIO
+    USE_GPIOD = False
+
 import time
 import threading
 
@@ -21,15 +29,26 @@ class UltrasonicSensor:
         self.distance = 0
         self.running = False
         
-        # Setup GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(self.trig_pin, GPIO.OUT)
-        GPIO.setup(self.echo_pin, GPIO.IN)
+        if USE_GPIOD:
+            # Use gpiod for Raspberry Pi 5
+            self.chip = gpiod.Chip('gpiochip4')
+            self.trig_line = self.chip.get_line(self.trig_pin)
+            self.echo_line = self.chip.get_line(self.echo_pin)
+            
+            self.trig_line.request(consumer="ultrasonic", type=gpiod.LINE_REQ_DIR_OUT)
+            self.echo_line.request(consumer="ultrasonic", type=gpiod.LINE_REQ_DIR_IN)
+            
+            self.trig_line.set_value(0)
+            print(f"Ultrasonic sensor initialized (gpiod) on TRIG={trig_pin}, ECHO={echo_pin}")
+        else:
+            # Use RPi.GPIO for older Pi models
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
+            GPIO.setup(self.trig_pin, GPIO.OUT)
+            GPIO.setup(self.echo_pin, GPIO.IN)
+            GPIO.output(self.trig_pin, False)
+            print(f"Ultrasonic sensor initialized (RPi.GPIO) on TRIG={trig_pin}, ECHO={echo_pin}")
         
-        # Ensure trigger is low
-        GPIO.output(self.trig_pin, False)
-        print(f"Ultrasonic sensor initialized on TRIG={trig_pin}, ECHO={echo_pin}")
         time.sleep(0.1)
     
     def measure_distance(self):
@@ -40,28 +59,50 @@ class UltrasonicSensor:
             float: Distance in cm, or -1 if measurement failed
         """
         try:
-            # Send 10us pulse to trigger
-            GPIO.output(self.trig_pin, True)
-            time.sleep(0.00001)  # 10 microseconds
-            GPIO.output(self.trig_pin, False)
-            
-            # Wait for echo to start (with timeout)
-            pulse_start = time.time()
-            timeout = pulse_start + 0.1  # 100ms timeout
-            
-            while GPIO.input(self.echo_pin) == 0:
+            if USE_GPIOD:
+                # Send 10us pulse to trigger
+                self.trig_line.set_value(1)
+                time.sleep(0.00001)  # 10 microseconds
+                self.trig_line.set_value(0)
+                
+                # Wait for echo to start (with timeout)
                 pulse_start = time.time()
-                if pulse_start > timeout:
-                    return -1
-            
-            # Wait for echo to end (with timeout)
-            pulse_end = time.time()
-            timeout = pulse_end + 0.1
-            
-            while GPIO.input(self.echo_pin) == 1:
+                timeout = pulse_start + 0.1  # 100ms timeout
+                
+                while self.echo_line.get_value() == 0:
+                    pulse_start = time.time()
+                    if pulse_start > timeout:
+                        return -1
+                
+                # Wait for echo to end (with timeout)
                 pulse_end = time.time()
-                if pulse_end > timeout:
-                    return -1
+                timeout = pulse_end + 0.1
+                
+                while self.echo_line.get_value() == 1:
+                    pulse_end = time.time()
+                    if pulse_end > timeout:
+                        return -1
+            else:
+                # RPi.GPIO version
+                GPIO.output(self.trig_pin, True)
+                time.sleep(0.00001)
+                GPIO.output(self.trig_pin, False)
+                
+                pulse_start = time.time()
+                timeout = pulse_start + 0.1
+                
+                while GPIO.input(self.echo_pin) == 0:
+                    pulse_start = time.time()
+                    if pulse_start > timeout:
+                        return -1
+                
+                pulse_end = time.time()
+                timeout = pulse_end + 0.1
+                
+                while GPIO.input(self.echo_pin) == 1:
+                    pulse_end = time.time()
+                    if pulse_end > timeout:
+                        return -1
             
             # Calculate distance
             pulse_duration = pulse_end - pulse_start
@@ -118,7 +159,15 @@ class UltrasonicSensor:
     def cleanup(self):
         """Clean up GPIO pins"""
         self.stop_continuous_reading()
-        GPIO.cleanup([self.trig_pin, self.echo_pin])
+        if USE_GPIOD:
+            if hasattr(self, 'trig_line'):
+                self.trig_line.release()
+            if hasattr(self, 'echo_line'):
+                self.echo_line.release()
+            if hasattr(self, 'chip'):
+                self.chip.close()
+        else:
+            GPIO.cleanup([self.trig_pin, self.echo_pin])
         print("GPIO cleanup complete")
 
 
