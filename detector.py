@@ -1,29 +1,37 @@
 """
-YOLOv8 Human Detection Module
+YOLOv8 Human Detection Module (Optimized for Raspberry Pi)
 Handles video capture and human detection with bounding boxes
 """
 import cv2
 import numpy as np
 from ultralytics import YOLO
 import time
+import config
 
 
 class HumanDetector:
-    def __init__(self, model_name='yolov8n.pt', conf_threshold=0.5, camera_index=0, resolution=(640, 480)):
+    def __init__(self, model_name='yolov8n.pt', conf_threshold=0.4, camera_index=0, resolution=(320, 240)):
         """
         Initialize YOLOv8 human detector
         
         Args:
             model_name: YOLOv8 model to use (default: yolov8n.pt - nano, fastest)
-            conf_threshold: Confidence threshold for detections (default: 0.5)
+            conf_threshold: Confidence threshold for detections (default: 0.4)
             camera_index: Camera device index (default: 0)
             resolution: Camera resolution as (width, height) tuple
         """
         print(f"Loading YOLOv8 model: {model_name}")
         self.model = YOLO(model_name)
+        
+        # Optimize for Raspberry Pi
+        self.model.fuse()  # Fuse layers for faster inference
+        
         self.conf_threshold = conf_threshold
         self.camera_index = camera_index
         self.resolution = resolution
+        self.frame_count = 0
+        self.last_human_count = 0
+        self.last_results = None
         
         # Initialize camera - try to find working camera
         self.cap = None
@@ -63,13 +71,16 @@ class HumanDetector:
         self.cap.set(cv2.CAP_PROP_FPS, 30)
         
         print(f"Camera initialized: {resolution[0]}x{resolution[1]}")
+        print(f"✓ Model loaded (optimized for Pi)")
+        print(f"  Image size: {config.IMGSZ}x{config.IMGSZ}")
+        print(f"  Processing every {config.PROCESS_EVERY_N_FRAMES} frames")
         
         # COCO dataset class ID for person is 0
         self.person_class_id = 0
         
     def detect_humans(self, frame):
         """
-        Detect humans in a frame
+        Detect humans in a frame (optimized with frame skipping)
         
         Args:
             frame: Input frame (numpy array)
@@ -77,8 +88,29 @@ class HumanDetector:
         Returns:
             tuple: (processed_frame, detection_count)
         """
-        # Run YOLOv8 inference
-        results = self.model(frame, conf=self.conf_threshold, verbose=False)
+        self.frame_count += 1
+        
+        # Skip frames for better performance
+        if self.frame_count % config.PROCESS_EVERY_N_FRAMES != 0:
+            # Use cached results
+            if self.last_results is not None:
+                return self._draw_cached_results(frame), self.last_human_count
+            return frame, 0
+        
+        # Run YOLOv8 inference with optimization
+        results = self.model(
+            frame, 
+            conf=self.conf_threshold, 
+            verbose=False,
+            imgsz=config.IMGSZ,  # Smaller size = much faster
+            iou=config.IOU_THRESHOLD,
+            classes=[self.person_class_id],  # Only detect persons
+            device='cpu',
+            half=False  # Don't use FP16 on CPU
+        )
+        
+        # Store results for caching
+        self.last_results = results
         
         # Count humans
         human_count = 0
@@ -86,32 +118,58 @@ class HumanDetector:
         # Draw bounding boxes
         for result in results:
             boxes = result.boxes
-            for box in boxes:
-                # Get class ID
-                class_id = int(box.cls[0])
-                
-                # Check if detection is a person
-                if class_id == self.person_class_id:
-                    human_count += 1
+            if boxes is not None:
+                for box in boxes:
+                    # Get class ID
+                    class_id = int(box.cls[0])
                     
-                    # Get bounding box coordinates
-                    x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
-                    
-                    # Get confidence
-                    confidence = float(box.conf[0])
-                    
-                    # Draw bounding box
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                    
-                    # Draw label
-                    label = f"Person {confidence:.2f}"
-                    label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)
-                    cv2.rectangle(frame, (x1, y1 - label_size[1] - 10), 
-                                (x1 + label_size[0], y1), (0, 255, 0), -1)
-                    cv2.putText(frame, label, (x1, y1 - 5), 
-                              cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
+                    # Check if detection is a person
+                    if class_id == self.person_class_id:
+                        human_count += 1
+                        
+                        # Get bounding box coordinates
+                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                        
+                        # Get confidence
+                        confidence = float(box.conf[0])
+                        
+                        # Draw bounding box
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        
+                        # Draw label
+                        label = f"Person {confidence:.2f}"
+                        label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+                        cv2.rectangle(frame, (x1, y1 - label_size[1] - 10), 
+                                    (x1 + label_size[0], y1), (0, 255, 0), -1)
+                        cv2.putText(frame, label, (x1, y1 - 5), 
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
         
+        self.last_human_count = human_count
         return frame, human_count
+    
+    def _draw_cached_results(self, frame):
+        """Draw last detection results on a new frame"""
+        if self.last_results is None:
+            return frame
+        
+        for result in self.last_results:
+            boxes = result.boxes
+            if boxes is not None:
+                for box in boxes:
+                    class_id = int(box.cls[0])
+                    if class_id == self.person_class_id:
+                        x1, y1, x2, y2 = box.xyxy[0].cpu().numpy().astype(int)
+                        confidence = float(box.conf[0])
+                        
+                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+                        label = f"Person {confidence:.2f}"
+                        label_size, _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)
+                        cv2.rectangle(frame, (x1, y1 - label_size[1] - 10), 
+                                    (x1 + label_size[0], y1), (0, 255, 0), -1)
+                        cv2.putText(frame, label, (x1, y1 - 5), 
+                                  cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 0), 1)
+        
+        return frame
     
     def add_info_overlay(self, frame, human_count, distance, fps=0):
         """
