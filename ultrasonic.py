@@ -31,7 +31,20 @@ class UltrasonicSensor:
         
         if USE_GPIOD:
             # Use gpiod for Raspberry Pi 5
-            self.chip = gpiod.Chip('gpiochip4')
+            # Try different chip numbers (Pi 5 uses gpiochip4, older models use gpiochip0)
+            chip_found = False
+            for chip_num in [4, 0]:
+                try:
+                    self.chip = gpiod.Chip(f'gpiochip{chip_num}')
+                    chip_found = True
+                    print(f"Using gpiochip{chip_num}")
+                    break
+                except FileNotFoundError:
+                    continue
+            
+            if not chip_found:
+                raise RuntimeError("Could not find GPIO chip. Try running with sudo or check /dev/gpiochip*")
+            
             self.trig_line = self.chip.get_line(self.trig_pin)
             self.echo_line = self.chip.get_line(self.echo_pin)
             
