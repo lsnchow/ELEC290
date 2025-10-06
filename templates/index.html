@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Human Detection & Distance Monitor</title>
+    <title>🦇 BATMAN CAR - Autonomous Tracking Robot</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -12,117 +13,241 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
+            color: #FFD700;
+            overflow-x: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
             padding: 20px;
-            color: white;
-        }
-        
-        header {
             text-align: center;
-            margin-bottom: 30px;
+            border-bottom: 3px solid #FFD700;
+            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
         }
         
-        h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        .header h1 {
+            font-size: 2.5em;
+            text-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
+            letter-spacing: 3px;
         }
         
-        .subtitle {
-            font-size: 1.1rem;
-            opacity: 0.9;
+        .header .subtitle {
+            color: #888;
+            font-size: 0.9em;
+            margin-top: 5px;
         }
         
-        .container {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-            max-width: 900px;
-            width: 100%;
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 20px;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .panel {
+            background: #1a1a1a;
+            border: 2px solid #333;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+        }
+        
+        .panel-title {
+            color: #FFD700;
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-bottom: 2px solid #FFD700;
+            padding-bottom: 10px;
         }
         
         .video-container {
             position: relative;
             width: 100%;
-            border-radius: 15px;
+            border: 3px solid #FFD700;
+            border-radius: 10px;
             overflow: hidden;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-            background: #000;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
         }
         
-        #video-stream {
+        #video {
             width: 100%;
             height: auto;
             display: block;
+            background: #000;
         }
         
-        .loading {
+        .video-overlay {
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            color: white;
-            font-size: 1.2rem;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #FFD700;
         }
         
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
+        .video-overlay p {
+            margin: 5px 0;
+            font-size: 0.9em;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .info-panel {
+        .controls-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: 1fr 1fr;
             gap: 15px;
-            margin-top: 20px;
+            margin-bottom: 20px;
         }
         
-        .info-card {
-            background: rgba(255, 255, 255, 0.15);
-            padding: 20px;
-            border-radius: 10px;
+        .control-box {
+            background: #0f0f0f;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        
+        .control-box h3 {
+            color: #FFD700;
+            font-size: 1em;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: 2px solid #FFD700;
+            background: #1a1a1a;
+            color: #FFD700;
+            font-family: 'Courier New', monospace;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        
+        .btn:hover {
+            background: #FFD700;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+        }
+        
+        .btn.active {
+            background: #FFD700;
+            color: #0a0a0a;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+        }
+        
+        .btn.emergency {
+            background: #8B0000;
+            border-color: #FF0000;
+            color: #FF0000;
+            font-size: 1.2em;
+            grid-column: 1 / -1;
+        }
+        
+        .btn.emergency:hover {
+            background: #FF0000;
+            color: #FFF;
+            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+        }
+        
+        .wasd-grid {
+            display: grid;
+            grid-template-areas:
+                ". w ."
+                "a s d";
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .wasd-grid .btn-w { grid-area: w; }
+        .wasd-grid .btn-a { grid-area: a; }
+        .wasd-grid .btn-s { grid-area: s; }
+        .wasd-grid .btn-d { grid-area: d; }
+        
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .sensor-box {
+            background: #0f0f0f;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
             text-align: center;
         }
         
-        .info-card h3 {
-            font-size: 0.9rem;
+        .sensor-label {
+            color: #888;
+            font-size: 0.8em;
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            opacity: 0.8;
+            margin-bottom: 5px;
         }
         
-        .info-card .value {
-            font-size: 2rem;
+        .sensor-value {
+            color: #FFD700;
+            font-size: 1.8em;
             font-weight: bold;
         }
         
+        .sensor-unit {
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .chart-container {
+            background: #0f0f0f;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            margin-top: 15px;
+            height: 250px;
+        }
+        
+        .status-bar {
+            background: #0f0f0f;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-around;
+            border-top: 2px solid #333;
+            font-size: 0.9em;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: #4ade80;
-            margin-right: 8px;
-            animation: pulse 2s ease-in-out infinite;
+            background: #FFD700;
+            box-shadow: 0 0 10px #FFD700;
+            animation: pulse 2s infinite;
         }
         
         @keyframes pulse {
@@ -130,156 +255,351 @@
             50% { opacity: 0.5; }
         }
         
-        .controls {
-            margin-top: 20px;
-            text-align: center;
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #FFD700;
+            border-radius: 5px;
+            font-size: 0.9em;
+            z-index: 1000;
         }
         
-        .btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            color: white;
-            padding: 12px 30px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            margin: 0 10px;
-        }
-        
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            border-color: rgba(255, 255, 255, 0.5);
-            transform: translateY(-2px);
-        }
-        
-        footer {
-            margin-top: 30px;
-            text-align: center;
-            opacity: 0.7;
-            font-size: 0.9rem;
-        }
-        
-        .error-message {
-            background: rgba(239, 68, 68, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 20px;
-            text-align: center;
-            display: none;
-        }
-        
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 1.8rem;
-            }
-            
-            .container {
-                padding: 20px;
-            }
+        .connection-status.disconnected {
+            border-color: #FF0000;
+            color: #FF0000;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>🎥 Human Detection & Distance Monitor</h1>
-        <p class="subtitle">
-            <span class="status-indicator"></span>
-            Live streaming from Raspberry Pi
-        </p>
-    </header>
-    
-    <div class="container">
-        <div class="video-container">
-            <img id="video-stream" src="{{ url_for('video_feed') }}" alt="Video Stream">
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <div>Loading stream...</div>
+    <div class="connection-status" id="connectionStatus">
+        <span class="status-indicator"></span>
+        CONNECTED
+    </div>
+
+    <div class="header">
+        <h1>🦇 BATMAN CAR 🦇</h1>
+        <p class="subtitle">Autonomous Tracking Robot - YOLO v8 Human Detection</p>
+    </div>
+
+    <div class="main-grid">
+        <!-- Left Column: Video Feed -->
+        <div>
+            <div class="panel">
+                <div class="panel-title">📹 Live Feed</div>
+                <div class="video-container">
+                    <img id="video" src="/video_feed" alt="Video Stream">
+                    <div class="video-overlay">
+                        <p>FPS: <span id="fps">--</span></p>
+                        <p>Detections: <span id="detections">0</span></p>
+                        <p>Mode: <span id="currentMode">MANUAL</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sensor Readings -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-title">📊 Sensor Data</div>
+                <div class="sensor-grid">
+                    <div class="sensor-box">
+                        <div class="sensor-label">Temperature</div>
+                        <div class="sensor-value" id="tempValue">--</div>
+                        <div class="sensor-unit">°C</div>
+                    </div>
+                    <div class="sensor-box">
+                        <div class="sensor-label">Gas Level</div>
+                        <div class="sensor-value" id="gasValue">--</div>
+                        <div class="sensor-unit">ppm</div>
+                    </div>
+                    <div class="sensor-box">
+                        <div class="sensor-label">Distance</div>
+                        <div class="sensor-value" id="distValue">--</div>
+                        <div class="sensor-unit">cm</div>
+                    </div>
+                </div>
+                
+                <!-- Charts -->
+                <div class="chart-container">
+                    <canvas id="temperatureChart" width="100%" height="200"></canvas>
+                </div>
             </div>
         </div>
-        
-        <div class="error-message" id="error-message">
-            ⚠️ Connection lost. Please check if the server is running.
-        </div>
-        
-        <div class="info-panel">
-            <div class="info-card">
-                <h3>System Status</h3>
-                <div class="value">🟢 Active</div>
+
+        <!-- Right Column: Controls -->
+        <div>
+            <!-- Mode Control -->
+            <div class="panel">
+                <div class="panel-title">🎮 Control Mode</div>
+                <div class="mode-buttons">
+                    <button class="btn" id="btnManual" onclick="setMode('manual')">Manual</button>
+                    <button class="btn" id="btnAuto" onclick="setMode('auto')">Auto Track</button>
+                </div>
             </div>
-            <div class="info-card">
-                <h3>Detection Model</h3>
-                <div class="value" style="font-size: 1.3rem;">YOLOv8</div>
+
+            <!-- WASD Controls -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-title">🕹️ Manual Control</div>
+                <div class="control-box">
+                    <h3>Use WASD Keys</h3>
+                    <div class="wasd-grid">
+                        <button class="btn btn-w" id="btnW">W<br>Forward</button>
+                        <button class="btn btn-a" id="btnA">A<br>Left</button>
+                        <button class="btn btn-s" id="btnS">S<br>Backward</button>
+                        <button class="btn btn-d" id="btnD">D<br>Right</button>
+                    </div>
+                </div>
+                <button class="btn emergency" onclick="emergencyStop()">⚠️ EMERGENCY STOP</button>
             </div>
-            <div class="info-card">
-                <h3>Camera</h3>
-                <div class="value" style="font-size: 1.3rem;">640x480</div>
+
+            <!-- Motor Status -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-title">⚙️ Motor Status</div>
+                <div class="control-box">
+                    <p>Direction: <span id="motorDirection" style="color: #FFD700;">STOPPED</span></p>
+                    <p>Speed: <span id="motorSpeed" style="color: #FFD700;">0</span>%</p>
+                </div>
             </div>
-        </div>
-        
-        <div class="controls">
-            <button class="btn" onclick="refreshStream()">🔄 Refresh Stream</button>
-            <button class="btn" onclick="openFullscreen()">⛶ Fullscreen</button>
+
+            <!-- System Info -->
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-title">💻 System Info</div>
+                <div class="control-box">
+                    <p>Arduino: <span id="arduinoStatus" style="color: #FFD700;">--</span></p>
+                    <p>Tracking: <span id="trackingStatus" style="color: #FFD700;">--</span></p>
+                    <p>Last Update: <span id="lastUpdate" style="color: #888;">--</span></p>
+                </div>
+            </div>
         </div>
     </div>
-    
-    <footer>
-        <p>Raspberry Pi 5 • YOLOv8 Detection • HC-SR04 Ultrasonic Sensor</p>
-        <p style="margin-top: 5px; font-size: 0.8rem;">
-            Detection data overlaid on video feed
-        </p>
-    </footer>
-    
+
+    <div class="status-bar">
+        <div class="status-item">
+            <span class="status-indicator"></span>
+            <span>YOLO v8 Active</span>
+        </div>
+        <div class="status-item">
+            <span class="status-indicator"></span>
+            <span>Motors Ready</span>
+        </div>
+        <div class="status-item">
+            <span class="status-indicator"></span>
+            <span>Sensors Online</span>
+        </div>
+    </div>
+
     <script>
-        const videoStream = document.getElementById('video-stream');
-        const loading = document.getElementById('loading');
-        const errorMessage = document.getElementById('error-message');
+        // Socket.IO connection
+        const socket = io();
         
-        // Hide loading spinner when stream loads
-        videoStream.onload = function() {
-            loading.style.display = 'none';
+        let currentMode = 'manual';
+        let sensorData = {
+            temperature: [],
+            gas: [],
+            distance: [],
+            timestamps: []
         };
-        
-        // Handle stream errors
-        videoStream.onerror = function() {
-            loading.style.display = 'none';
-            errorMessage.style.display = 'block';
+        const MAX_DATA_POINTS = 30;
+
+        // Connection status
+        socket.on('connect', () => {
+            document.getElementById('connectionStatus').textContent = 'CONNECTED';
+            document.getElementById('connectionStatus').classList.remove('disconnected');
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('connectionStatus').textContent = 'DISCONNECTED';
+            document.getElementById('connectionStatus').classList.add('disconnected');
+        });
+
+        // Mode control
+        function setMode(mode) {
+            currentMode = mode;
+            socket.emit('set_mode', { mode: mode });
             
-            // Try to reconnect after 5 seconds
-            setTimeout(refreshStream, 5000);
+            // Update UI
+            document.getElementById('btnManual').classList.toggle('active', mode === 'manual');
+            document.getElementById('btnAuto').classList.toggle('active', mode === 'auto');
+            document.getElementById('currentMode').textContent = mode.toUpperCase();
+        }
+
+        // WASD keyboard controls
+        const keyMap = {
+            'w': 'w',
+            'a': 'a',
+            's': 's',
+            'd': 'd'
         };
         
-        // Refresh stream function
-        function refreshStream() {
-            const timestamp = new Date().getTime();
-            videoStream.src = "{{ url_for('video_feed') }}?t=" + timestamp;
-            errorMessage.style.display = 'none';
-            loading.style.display = 'block';
-        }
-        
-        // Fullscreen function
-        function openFullscreen() {
-            const container = document.querySelector('.video-container');
-            if (container.requestFullscreen) {
-                container.requestFullscreen();
-            } else if (container.webkitRequestFullscreen) {
-                container.webkitRequestFullscreen();
-            } else if (container.msRequestFullscreen) {
-                container.msRequestFullscreen();
+        let pressedKeys = new Set();
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (keyMap[key] && !pressedKeys.has(key) && currentMode === 'manual') {
+                pressedKeys.add(key);
+                socket.emit('manual_control', { command: key });
+                
+                // Visual feedback
+                const btnId = 'btn' + key.toUpperCase();
+                document.getElementById(btnId).classList.add('active');
             }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (keyMap[key]) {
+                pressedKeys.delete(key);
+                socket.emit('manual_control', { command: 'stop' });
+                
+                // Remove visual feedback
+                const btnId = 'btn' + key.toUpperCase();
+                document.getElementById(btnId).classList.remove('active');
+            }
+        });
+
+        // Button click controls
+        ['W', 'A', 'S', 'D'].forEach(key => {
+            const btn = document.getElementById('btn' + key);
+            btn.addEventListener('mousedown', () => {
+                if (currentMode === 'manual') {
+                    socket.emit('manual_control', { command: key.toLowerCase() });
+                }
+            });
+            btn.addEventListener('mouseup', () => {
+                socket.emit('manual_control', { command: 'stop' });
+            });
+            btn.addEventListener('mouseleave', () => {
+                socket.emit('manual_control', { command: 'stop' });
+            });
+        });
+
+        // Emergency stop
+        function emergencyStop() {
+            socket.emit('emergency_stop');
+            setMode('manual');
         }
-        
-        // Check server status periodically
-        setInterval(async function() {
+
+        // Fetch status updates
+        setInterval(async () => {
             try {
                 const response = await fetch('/status');
-                if (response.ok) {
-                    errorMessage.style.display = 'none';
+                const data = await response.json();
+                
+                // Update motor status
+                document.getElementById('motorDirection').textContent = 
+                    data.motor_status.direction.toUpperCase();
+                document.getElementById('motorSpeed').textContent = 
+                    data.motor_status.speed;
+                
+                // Update FPS and detections
+                document.getElementById('fps').textContent = 
+                    data.fps ? data.fps.toFixed(1) : '--';
+                
+                // Update tracking status
+                document.getElementById('trackingStatus').textContent = 
+                    data.tracking_status.enabled ? 'ENABLED' : 'DISABLED';
+                
+                // Update Arduino status
+                const arduinoConnected = data.arduino_data.gas !== null;
+                document.getElementById('arduinoStatus').textContent = 
+                    arduinoConnected ? 'CONNECTED' : 'DISCONNECTED';
+                
+                // Update sensor values
+                if (arduinoConnected) {
+                    document.getElementById('tempValue').textContent = 
+                        data.arduino_data.temperature.toFixed(1);
+                    document.getElementById('gasValue').textContent = 
+                        data.arduino_data.gas.toFixed(0);
+                    document.getElementById('distValue').textContent = 
+                        data.arduino_data.distance.toFixed(1);
+                    
+                    // Add to chart data
+                    const now = new Date().toLocaleTimeString();
+                    sensorData.temperature.push(data.arduino_data.temperature);
+                    sensorData.gas.push(data.arduino_data.gas);
+                    sensorData.distance.push(data.arduino_data.distance);
+                    sensorData.timestamps.push(now);
+                    
+                    // Keep only last MAX_DATA_POINTS
+                    if (sensorData.temperature.length > MAX_DATA_POINTS) {
+                        sensorData.temperature.shift();
+                        sensorData.gas.shift();
+                        sensorData.distance.shift();
+                        sensorData.timestamps.shift();
+                    }
+                    
+                    updateChart();
                 }
+                
+                // Update last update time
+                document.getElementById('lastUpdate').textContent = 
+                    new Date().toLocaleTimeString();
+                    
             } catch (error) {
-                console.error('Status check failed:', error);
+                console.error('Error fetching status:', error);
             }
-        }, 10000); // Check every 10 seconds
+        }, 1000);
+
+        // Simple canvas chart (lightweight alternative to Recharts for better performance)
+        const canvas = document.getElementById('temperatureChart');
+        const ctx = canvas ? canvas.getContext('2d') : null;
+        
+        function updateChart() {
+            if (!ctx || sensorData.temperature.length === 0) return;
+            
+            const width = canvas.width = canvas.offsetWidth;
+            const height = canvas.height = 200;
+            
+            // Clear canvas
+            ctx.fillStyle = '#0f0f0f';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Draw temperature line
+            ctx.strokeStyle = '#FFD700';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            const padding = 30;
+            const chartWidth = width - 2 * padding;
+            const chartHeight = height - 2 * padding;
+            
+            const maxTemp = Math.max(...sensorData.temperature, 30);
+            const minTemp = Math.min(...sensorData.temperature, 20);
+            const tempRange = maxTemp - minTemp || 10;
+            
+            sensorData.temperature.forEach((temp, i) => {
+                const x = padding + (i / (MAX_DATA_POINTS - 1)) * chartWidth;
+                const y = height - padding - ((temp - minTemp) / tempRange) * chartHeight;
+                
+                if (i === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Draw axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, height - padding);
+            ctx.lineTo(width - padding, height - padding);
+            ctx.stroke();
+            
+            // Labels
+            ctx.fillStyle = '#888';
+            ctx.font = '12px Courier New';
+            ctx.fillText('Temperature (°C)', padding, 20);
+            ctx.fillText(maxTemp.toFixed(1), 5, padding + 10);
+            ctx.fillText(minTemp.toFixed(1), 5, height - padding);
+        }
+
+        // Initialize mode
+        setMode('manual');
     </script>
 </body>
 </html>

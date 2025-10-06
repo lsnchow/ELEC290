@@ -1,25 +1,33 @@
 """
-Flask MJPEG Streaming Server with YOLOv8 Human Detection and Ultrasonic Sensor
+Autonomous Tracking Robot Car - Flask Server with WebSocket Control
 """
-from flask import Flask, render_template, Response
+from flask import Flask, render_template, Response, jsonify
+from flask_socketio import SocketIO, emit
 import cv2
 import time
-from detector import HumanDetector
-from ultrasonic import UltrasonicSensor
 import config
+from detector import HumanDetector
+from motors import MotorController
+from arduino_serial import ArduinoSerial
+from tracking import PersonTracker
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'batman-secret-key-290'
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Global objects
 detector = None
-sensor = None
+motors = None
+arduino = None
+tracker = None
+control_mode = config.DEFAULT_MODE  # 'manual' or 'auto'
 
 
 def initialize_system():
-    """Initialize detection and sensor systems"""
-    global detector, sensor
+    """Initialize all systems"""
+    global detector, motors, arduino, tracker
     
-    print("Initializing system...")
+    print("Initializing autonomous tracking robot...")
     
     # Initialize human detector
     detector = HumanDetector(
@@ -29,14 +37,23 @@ def initialize_system():
         resolution=(config.CAMERA_WIDTH, config.CAMERA_HEIGHT)
     )
     
-    # Initialize ultrasonic sensor
-    sensor = UltrasonicSensor(
-        trig_pin=config.TRIG_PIN,
-        echo_pin=config.ECHO_PIN
+    # Initialize motor controller
+    motors = MotorController(
+        ena=config.ENA, in1=config.IN1, in2=config.IN2,
+        enb=config.ENB, in3=config.IN3, in4=config.IN4
     )
     
-    # Start continuous distance reading
-    sensor.start_continuous_reading(interval=config.DISTANCE_READ_INTERVAL)
+    # Initialize Arduino serial
+    arduino = ArduinoSerial(
+        port=config.ARDUINO_PORT,
+        baudrate=config.ARDUINO_BAUD
+    )
+    arduino.start()
+    
+    # Initialize person tracker
+    tracker = PersonTracker(motors, arduino)
+    if config.TRACKING_ENABLED and control_mode == 'auto':
+        tracker.enable()
     
     print("System initialized successfully!")
 
@@ -44,9 +61,9 @@ def initialize_system():
 def generate_frames():
     """
     Generator function for MJPEG streaming
-    Yields frames with detection and distance overlay
+    Yields frames with detection and overlays
     """
-    global detector, sensor
+    global detector, arduino, tracker, control_mode
     
     frame_time = time.time()
     fps = 0
@@ -62,8 +79,15 @@ def generate_frames():
             # Detect humans
             processed_frame, human_count = detector.detect_humans(frame)
             
-            # Get distance from sensor
-            distance = sensor.get_distance()
+            # Get Arduino sensor data
+            arduino_data = arduino.get_data()
+            distance = arduino_data['distance']
+            
+            # Auto-tracking if enabled
+            if control_mode == 'auto' and tracker.enabled:
+                # Get detections for tracking
+                detections = detector.last_results[0].boxes.xyxy.cpu().numpy().tolist() if detector.last_results and len(detector.last_results) > 0 and detector.last_results[0].boxes is not None else []
+                tracking_status = tracker.process_detection(detections, human_count)
             
             # Calculate FPS
             current_time = time.time()
@@ -77,6 +101,11 @@ def generate_frames():
                 distance, 
                 fps
             )
+            
+            # Add mode indicator
+            mode_text = f"Mode: {control_mode.upper()}"
+            cv2.putText(processed_frame, mode_text, (10, processed_frame.shape[0] - 20),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
             
             # Encode frame as JPEG
             ret, buffer = cv2.imencode('.jpg', processed_frame, 
@@ -118,24 +147,113 @@ def video_feed():
 @app.route('/status')
 def status():
     """Return system status as JSON"""
-    global sensor
+    global arduino, motors, tracker, control_mode
     
-    return {
+    arduino_data = arduino.get_data() if arduino else {}
+    motor_status = motors.get_status() if motors else {}
+    
+    return jsonify({
         'status': 'running',
-        'distance': sensor.get_distance() if sensor else -1,
+        'mode': control_mode,
         'camera_resolution': f"{config.CAMERA_WIDTH}x{config.CAMERA_HEIGHT}",
-        'model': config.YOLO_MODEL
-    }
+        'model': config.YOLO_MODEL,
+        'sensors': arduino_data,
+        'motors': motor_status,
+        'tracking_enabled': tracker.enabled if tracker else False
+    })
+
+@app.route('/sensor_data')
+def sensor_data():
+    """Stream sensor data as JSON"""
+    global arduino
+    
+    if arduino:
+        return jsonify(arduino.get_data())
+    return jsonify({'error': 'Arduino not connected'})
+
+# WebSocket event handlers
+@socketio.on('connect')
+def handle_connect():
+    """Client connected"""
+    print('Client connected')
+    emit('status', {'mode': control_mode, 'connected': True})
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    """Client disconnected"""
+    print('Client disconnected')
+    if control_mode == 'manual':
+        motors.stop()
+
+@socketio.on('set_mode')
+def handle_set_mode(data):
+    """Switch between auto/manual mode"""
+    global control_mode, tracker
+    
+    mode = data.get('mode', 'manual')
+    if mode in ['auto', 'manual']:
+        control_mode = mode
+        print(f"Mode switched to: {mode}")
+        
+        if mode == 'auto':
+            tracker.enable()
+        else:
+            tracker.disable()
+            motors.stop()
+        
+        emit('mode_changed', {'mode': mode}, broadcast=True)
+
+@socketio.on('manual_control')
+def handle_manual_control(data):
+    """Handle manual WASD control"""
+    global control_mode, motors
+    
+    if control_mode != 'manual':
+        return
+    
+    command = data.get('command', 'stop')
+    speed = data.get('speed', config.DEFAULT_SPEED)
+    
+    if command == 'forward' or command == 'w':
+        motors.forward(speed)
+    elif command == 'backward' or command == 's':
+        motors.backward(speed)
+    elif command == 'left' or command == 'a':
+        motors.left(speed)
+    elif command == 'right' or command == 'd':
+        motors.right(speed)
+    elif command == 'stop':
+        motors.stop()
+    
+    emit('motor_status', motors.get_status(), broadcast=True)
+
+@socketio.on('emergency_stop')
+def handle_emergency_stop():
+    """Emergency stop - stops motors and switches to manual"""
+    global control_mode, motors, tracker
+    
+    motors.stop()
+    control_mode = 'manual'
+    tracker.disable()
+    
+    print("EMERGENCY STOP activated")
+    emit('mode_changed', {'mode': 'manual', 'emergency': True}, broadcast=True)
 
 
 def cleanup():
     """Clean up resources on shutdown"""
-    global detector, sensor
+    global detector, motors, arduino, tracker
     
     print("\nShutting down...")
     
-    if sensor:
-        sensor.cleanup()
+    if tracker:
+        tracker.disable()
+    
+    if motors:
+        motors.cleanup()
+    
+    if arduino:
+        arduino.stop()
     
     if detector:
         detector.release()
@@ -147,23 +265,28 @@ if __name__ == '__main__':
     try:
         initialize_system()
         
-        print(f"\n{'='*50}")
-        print(f"Server starting on http://{config.HOST}:{config.PORT}")
+        print(f"\n{'='*70}")
+        print(f"🦇 AUTONOMOUS TRACKING ROBOT CAR - ONLINE 🦇")
+        print(f"{'='*70}")
+        print(f"Server: http://{config.HOST}:{config.PORT}")
         print(f"Access from your Mac: http://<raspberry-pi-ip>:{config.PORT}")
-        print(f"To find Pi IP, run: hostname -I")
-        print(f"{'='*50}\n")
+        print(f"Mode: {control_mode.upper()}")
+        print(f"{'='*70}\n")
         
-        # Run Flask app
-        app.run(
+        # Run Flask app with SocketIO
+        socketio.run(
+            app,
             host=config.HOST,
             port=config.PORT,
             debug=config.DEBUG,
-            threaded=True
+            allow_unsafe_werkzeug=True
         )
         
     except KeyboardInterrupt:
         print("\n\nReceived interrupt signal...")
     except Exception as e:
         print(f"\nError: {e}")
+        import traceback
+        traceback.print_exc()
     finally:
         cleanup()

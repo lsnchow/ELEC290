@@ -1,33 +1,55 @@
 """
-Configuration settings for the detection system (Optimized for Raspberry Pi)
+Configuration settings for autonomous tracking robot car
 """
 
 # Camera settings
-CAMERA_INDEX = 0  # 0 for /dev/video0, adjust if using different camera
-CAMERA_WIDTH = 320  # Reduced from 640 for much faster processing
-CAMERA_HEIGHT = 240  # Reduced from 480
-CAMERA_FPS = 15  # Lower FPS for smoother performance
+CAMERA_INDEX = 0  # 0 for /dev/video0
+CAMERA_WIDTH = 320  # Optimized for Pi
+CAMERA_HEIGHT = 240
+CAMERA_FPS = 15
 
 # YOLO settings
-YOLO_MODEL = 'yolov8n.pt'  # yolov8n.pt (nano - fastest)
-CONFIDENCE_THRESHOLD = 0.35  # Detection confidence (lower = more detections but less accurate)
+YOLO_MODEL = 'yolov8n.pt'
+CONFIDENCE_THRESHOLD = 0.35
 IOU_THRESHOLD = 0.5
-TARGET_CLASS = 0  # 0 = person in COCO dataset
+TARGET_CLASS = 0  # person
 
-# Performance optimization (ULTRA FAST MODE)
-IMGSZ = 256  # Even smaller inference size (256 instead of 320) = MUCH faster!
-PROCESS_EVERY_N_FRAMES = 3  # Process every 3rd frame (skip 2) for maximum speed
+# Performance optimization
+IMGSZ = 256
+PROCESS_EVERY_N_FRAMES = 3
 
-# Ultrasonic sensor GPIO pins (BCM numbering)
-TRIG_PIN = 23  # GPIO 23 (Physical Pin 16)
-ECHO_PIN = 24  # GPIO 24 (Physical Pin 18)
-DISTANCE_READ_INTERVAL = 0.2  # Seconds between distance measurements
+# Motor control pins (L298N) - BCM numbering
+ENA = 17  # Motor A PWM (Physical Pin 11)
+IN1 = 27  # Motor A Direction 1 (Physical Pin 13)
+IN2 = 22  # Motor A Direction 2 (Physical Pin 15)
+ENB = 18  # Motor B PWM (Physical Pin 12)
+IN3 = 23  # Motor B Direction 1 (Physical Pin 16)
+IN4 = 24  # Motor B Direction 2 (Physical Pin 18)
+
+# Motor settings
+DEFAULT_SPEED = 60  # Default motor speed (0-100)
+TURN_SPEED = 50  # Speed when turning
+MIN_SPEED = 30  # Minimum speed to overcome friction
+
+# Arduino serial settings
+ARDUINO_PORT = '/dev/ttyUSB0'  # Try /dev/ttyACM0 if this doesn't work
+ARDUINO_BAUD = 9600
+
+# Auto-tracking settings
+TRACKING_ENABLED = True
+STOP_DISTANCE = 8  # Stop if Arduino distance < 8cm
+FOLLOW_DISTANCE = 50  # Ideal following distance (cm)
+PERSON_LOST_TIMEOUT = 3  # Stop if person not detected for 3 seconds
+CENTER_TOLERANCE = 50  # Pixel tolerance for "centered" detection
 
 # Flask server settings
-HOST = '0.0.0.0'  # Listen on all network interfaces
+HOST = '0.0.0.0'
 PORT = 5000
-DEBUG = False  # Set to False for production
+DEBUG = False
 
-# Performance settings
-JPEG_QUALITY = 60  # JPEG compression quality (1-100), lower = faster
-STREAM_FPS_LIMIT = 12  # Max FPS for MJPEG stream to reduce bandwidth
+# Streaming settings
+JPEG_QUALITY = 60
+STREAM_FPS_LIMIT = 12
+
+# Control mode
+DEFAULT_MODE = 'manual'  # 'manual' or 'auto'
