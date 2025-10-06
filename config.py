@@ -10,13 +10,13 @@ CAMERA_FPS = 15  # Lower FPS for smoother performance
 
 # YOLO settings
 YOLO_MODEL = 'yolov8n.pt'  # yolov8n.pt (nano - fastest)
-CONFIDENCE_THRESHOLD = 0.4  # Detection confidence (0.0 to 1.0)
+CONFIDENCE_THRESHOLD = 0.35  # Detection confidence (lower = more detections but less accurate)
 IOU_THRESHOLD = 0.5
 TARGET_CLASS = 0  # 0 = person in COCO dataset
 
-# Performance optimization
-IMGSZ = 320  # Reduced inference size for much faster processing
-PROCESS_EVERY_N_FRAMES = 2  # Process every 2nd frame, skip others for speed
+# Performance optimization (ULTRA FAST MODE)
+IMGSZ = 256  # Even smaller inference size (256 instead of 320) = MUCH faster!
+PROCESS_EVERY_N_FRAMES = 3  # Process every 3rd frame (skip 2) for maximum speed
 
 # Ultrasonic sensor GPIO pins (BCM numbering)
 TRIG_PIN = 23  # GPIO 23 (Physical Pin 16)
@@ -29,5 +29,5 @@ PORT = 5000
 DEBUG = False  # Set to False for production
 
 # Performance settings
-JPEG_QUALITY = 70  # JPEG compression quality (1-100), lower = faster
-STREAM_FPS_LIMIT = 10  # Max FPS for MJPEG stream to reduce bandwidth
+JPEG_QUALITY = 60  # JPEG compression quality (1-100), lower = faster
+STREAM_FPS_LIMIT = 12  # Max FPS for MJPEG stream to reduce bandwidth
