@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🦇 BATMAN CAR - Autonomous Tracking Robot</title>
+    <title>Autonomous Tracking Robot</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         * {
@@ -13,35 +13,36 @@
         }
         
         body {
-            font-family: 'Courier New', monospace;
-            background: #0a0a0a;
-            color: #FFD700;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #000;
+            color: #fff;
             overflow-x: hidden;
         }
         
         .header {
-            background: linear-gradient(180deg, #1a1a1a 0%, #0a0a0a 100%);
+            background: linear-gradient(180deg, #1a1a1a 0%, #000 100%);
             padding: 20px;
             text-align: center;
-            border-bottom: 3px solid #FFD700;
-            box-shadow: 0 5px 20px rgba(255, 215, 0, 0.3);
+            border-bottom: 1px solid #333;
         }
         
         .header h1 {
-            font-size: 2.5em;
-            text-shadow: 0 0 20px #FFD700, 0 0 40px #FFD700;
-            letter-spacing: 3px;
+            font-size: 2em;
+            font-weight: 300;
+            letter-spacing: 2px;
+            color: #fff;
         }
         
         .header .subtitle {
-            color: #888;
-            font-size: 0.9em;
-            margin-top: 5px;
+            color: #999;
+            font-size: 0.85em;
+            margin-top: 8px;
+            font-weight: 300;
         }
         
         .main-grid {
             display: grid;
-            grid-template-columns: 1fr 400px;
+            grid-template-columns: 1fr 380px;
             gap: 20px;
             padding: 20px;
             max-width: 1800px;
@@ -55,119 +56,103 @@
         }
         
         .panel {
-            background: #1a1a1a;
-            border: 2px solid #333;
-            border-radius: 10px;
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 4px;
             padding: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
         }
         
         .panel-title {
-            color: #FFD700;
-            font-size: 1.3em;
+            color: #fff;
+            font-size: 0.9em;
+            font-weight: 600;
             margin-bottom: 15px;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            border-bottom: 2px solid #FFD700;
-            padding-bottom: 10px;
+            letter-spacing: 1.5px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 12px;
         }
         
         .video-container {
             position: relative;
             width: 100%;
-            border: 3px solid #FFD700;
-            border-radius: 10px;
+            border: 1px solid #333;
+            border-radius: 4px;
             overflow: hidden;
-            box-shadow: 0 0 30px rgba(255, 215, 0, 0.4);
+            background: #000;
         }
         
         #video {
             width: 100%;
             height: auto;
             display: block;
-            background: #000;
         }
         
         .video-overlay {
             position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #FFD700;
+            top: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            backdrop-filter: blur(10px);
         }
         
         .video-overlay p {
-            margin: 5px 0;
-            font-size: 0.9em;
+            margin: 4px 0;
+            color: #ccc;
         }
         
-        .controls-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .control-box {
-            background: #0f0f0f;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #333;
-        }
-        
-        .control-box h3 {
-            color: #FFD700;
-            font-size: 1em;
-            margin-bottom: 10px;
-            text-transform: uppercase;
+        .video-overlay p span {
+            color: #fff;
+            font-weight: 500;
         }
         
         .mode-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 12px;
         }
         
         .btn {
-            padding: 12px 20px;
-            border: 2px solid #FFD700;
-            background: #1a1a1a;
-            color: #FFD700;
-            font-family: 'Courier New', monospace;
-            font-size: 1em;
-            font-weight: bold;
+            padding: 14px 20px;
+            border: 1px solid #333;
+            background: #0a0a0a;
+            color: #fff;
+            font-family: inherit;
+            font-size: 0.9em;
+            font-weight: 500;
             cursor: pointer;
-            border-radius: 5px;
-            transition: all 0.3s;
+            border-radius: 4px;
+            transition: all 0.2s ease;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .btn:hover {
-            background: #FFD700;
-            color: #0a0a0a;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.6);
+            background: #1a1a1a;
+            border-color: #555;
         }
         
         .btn.active {
-            background: #FFD700;
-            color: #0a0a0a;
-            box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+            background: #fff;
+            color: #000;
+            border-color: #fff;
         }
         
         .btn.emergency {
-            background: #8B0000;
-            border-color: #FF0000;
-            color: #FF0000;
-            font-size: 1.2em;
+            background: #1a0000;
+            border-color: #ff0000;
+            color: #ff4444;
+            font-size: 1em;
             grid-column: 1 / -1;
+            margin-top: 8px;
         }
         
         .btn.emergency:hover {
-            background: #FF0000;
-            color: #FFF;
-            box-shadow: 0 0 30px rgba(255, 0, 0, 0.8);
+            background: #ff0000;
+            color: #fff;
         }
         
         .wasd-grid {
@@ -187,89 +172,114 @@
         .sensor-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
+            gap: 12px;
             margin: 15px 0;
         }
         
         .sensor-box {
-            background: #0f0f0f;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #333;
+            background: #000;
+            padding: 16px;
+            border-radius: 4px;
+            border: 1px solid #222;
             text-align: center;
         }
         
         .sensor-label {
             color: #888;
-            font-size: 0.8em;
+            font-size: 0.75em;
             text-transform: uppercase;
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            letter-spacing: 1px;
+            font-weight: 500;
         }
         
         .sensor-value {
-            color: #FFD700;
+            color: #fff;
             font-size: 1.8em;
-            font-weight: bold;
+            font-weight: 300;
+            margin: 4px 0;
         }
         
         .sensor-unit {
             color: #666;
-            font-size: 0.9em;
+            font-size: 0.85em;
         }
         
         .chart-container {
-            background: #0f0f0f;
+            background: #000;
             padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #333;
+            border-radius: 4px;
+            border: 1px solid #222;
             margin-top: 15px;
             height: 250px;
         }
         
         .status-bar {
-            background: #0f0f0f;
-            padding: 10px 20px;
+            background: #0a0a0a;
+            padding: 12px 20px;
             display: flex;
             justify-content: space-around;
-            border-top: 2px solid #333;
-            font-size: 0.9em;
+            border-top: 1px solid #222;
+            font-size: 0.85em;
         }
         
         .status-item {
             display: flex;
             align-items: center;
             gap: 8px;
+            color: #999;
         }
         
         .status-indicator {
-            width: 10px;
-            height: 10px;
+            width: 8px;
+            height: 8px;
             border-radius: 50%;
-            background: #FFD700;
-            box-shadow: 0 0 10px #FFD700;
+            background: #fff;
             animation: pulse 2s infinite;
         }
         
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.3; }
         }
         
         .connection-status {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 10px 20px;
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #FFD700;
-            border-radius: 5px;
-            font-size: 0.9em;
+            padding: 8px 16px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #333;
+            border-radius: 4px;
+            font-size: 0.8em;
             z-index: 1000;
+            backdrop-filter: blur(10px);
         }
         
         .connection-status.disconnected {
-            border-color: #FF0000;
-            color: #FF0000;
+            border-color: #ff0000;
+            color: #ff4444;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #1a1a1a;
+            font-size: 0.9em;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #888;
+        }
+        
+        .info-value {
+            color: #fff;
+            font-weight: 500;
         }
     </style>
 </head>
@@ -280,15 +290,15 @@
     </div>
 
     <div class="header">
-        <h1>🦇 BATMAN CAR 🦇</h1>
-        <p class="subtitle">Autonomous Tracking Robot - YOLO v8 Human Detection</p>
+        <h1>AUTONOMOUS TRACKING ROBOT</h1>
+        <p class="subtitle">YOLOv8 Human Detection · Real-time Control System</p>
     </div>
 
     <div class="main-grid">
         <!-- Left Column: Video Feed -->
         <div>
             <div class="panel">
-                <div class="panel-title">📹 Live Feed</div>
+                <div class="panel-title">Live Feed</div>
                 <div class="video-container">
                     <img id="video" src="/video_feed" alt="Video Stream">
                     <div class="video-overlay">
@@ -301,7 +311,7 @@
 
             <!-- Sensor Readings -->
             <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">📊 Sensor Data</div>
+                <div class="panel-title">Sensor Readings</div>
                 <div class="sensor-grid">
                     <div class="sensor-box">
                         <div class="sensor-label">Temperature</div>
@@ -331,7 +341,7 @@
         <div>
             <!-- Mode Control -->
             <div class="panel">
-                <div class="panel-title">🎮 Control Mode</div>
+                <div class="panel-title">Control Mode</div>
                 <div class="mode-buttons">
                     <button class="btn" id="btnManual" onclick="setMode('manual')">Manual</button>
                     <button class="btn" id="btnAuto" onclick="setMode('auto')">Auto Track</button>
@@ -340,35 +350,43 @@
 
             <!-- WASD Controls -->
             <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">🕹️ Manual Control</div>
-                <div class="control-box">
-                    <h3>Use WASD Keys</h3>
-                    <div class="wasd-grid">
-                        <button class="btn btn-w" id="btnW">W<br>Forward</button>
-                        <button class="btn btn-a" id="btnA">A<br>Left</button>
-                        <button class="btn btn-s" id="btnS">S<br>Backward</button>
-                        <button class="btn btn-d" id="btnD">D<br>Right</button>
-                    </div>
+                <div class="panel-title">Manual Control</div>
+                <div class="wasd-grid">
+                    <button class="btn btn-w" id="btnW">W<br><span style="font-size:0.7em">Forward</span></button>
+                    <button class="btn btn-a" id="btnA">A<br><span style="font-size:0.7em">Left</span></button>
+                    <button class="btn btn-s" id="btnS">S<br><span style="font-size:0.7em">Back</span></button>
+                    <button class="btn btn-d" id="btnD">D<br><span style="font-size:0.7em">Right</span></button>
                 </div>
-                <button class="btn emergency" onclick="emergencyStop()">⚠️ EMERGENCY STOP</button>
+                <button class="btn emergency" onclick="emergencyStop()">EMERGENCY STOP</button>
             </div>
 
             <!-- Motor Status -->
             <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">⚙️ Motor Status</div>
-                <div class="control-box">
-                    <p>Direction: <span id="motorDirection" style="color: #FFD700;">STOPPED</span></p>
-                    <p>Speed: <span id="motorSpeed" style="color: #FFD700;">0</span>%</p>
+                <div class="panel-title">Motor Status</div>
+                <div class="info-row">
+                    <span class="info-label">Direction</span>
+                    <span class="info-value" id="motorDirection">STOPPED</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Speed</span>
+                    <span class="info-value" id="motorSpeed">0%</span>
                 </div>
             </div>
 
             <!-- System Info -->
             <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">💻 System Info</div>
-                <div class="control-box">
-                    <p>Arduino: <span id="arduinoStatus" style="color: #FFD700;">--</span></p>
-                    <p>Tracking: <span id="trackingStatus" style="color: #FFD700;">--</span></p>
-                    <p>Last Update: <span id="lastUpdate" style="color: #888;">--</span></p>
+                <div class="panel-title">System Status</div>
+                <div class="info-row">
+                    <span class="info-label">Arduino</span>
+                    <span class="info-value" id="arduinoStatus">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Tracking</span>
+                    <span class="info-value" id="trackingStatus">--</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Update</span>
+                    <span class="info-value" id="lastUpdate" style="color: #666;">--</span>
                 </div>
             </div>
         </div>
@@ -377,7 +395,7 @@
     <div class="status-bar">
         <div class="status-item">
             <span class="status-indicator"></span>
-            <span>YOLO v8 Active</span>
+            <span>YOLOv8 Active</span>
         </div>
         <div class="status-item">
             <span class="status-indicator"></span>
@@ -490,7 +508,7 @@
                 document.getElementById('motorDirection').textContent = 
                     data.motor_status.direction.toUpperCase();
                 document.getElementById('motorSpeed').textContent = 
-                    data.motor_status.speed;
+                    data.motor_status.speed + '%';
                 
                 // Update FPS and detections
                 document.getElementById('fps').textContent = 
@@ -541,7 +559,7 @@
             }
         }, 1000);
 
-        // Simple canvas chart (lightweight alternative to Recharts for better performance)
+        // Canvas chart
         const canvas = document.getElementById('temperatureChart');
         const ctx = canvas ? canvas.getContext('2d') : null;
         
@@ -552,15 +570,15 @@
             const height = canvas.height = 200;
             
             // Clear canvas
-            ctx.fillStyle = '#0f0f0f';
+            ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, width, height);
             
             // Draw temperature line
-            ctx.strokeStyle = '#FFD700';
+            ctx.strokeStyle = '#fff';
             ctx.lineWidth = 2;
             ctx.beginPath();
             
-            const padding = 30;
+            const padding = 40;
             const chartWidth = width - 2 * padding;
             const chartHeight = height - 2 * padding;
             
@@ -581,6 +599,17 @@
             
             ctx.stroke();
             
+            // Draw grid
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 4; i++) {
+                const y = padding + (i / 4) * chartHeight;
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(width - padding, y);
+                ctx.stroke();
+            }
+            
             // Draw axes
             ctx.strokeStyle = '#333';
             ctx.lineWidth = 1;
@@ -591,11 +620,11 @@
             ctx.stroke();
             
             // Labels
-            ctx.fillStyle = '#888';
-            ctx.font = '12px Courier New';
+            ctx.fillStyle = '#666';
+            ctx.font = '11px -apple-system, sans-serif';
             ctx.fillText('Temperature (°C)', padding, 20);
-            ctx.fillText(maxTemp.toFixed(1), 5, padding + 10);
-            ctx.fillText(minTemp.toFixed(1), 5, height - padding);
+            ctx.fillText(maxTemp.toFixed(1), 5, padding + 15);
+            ctx.fillText(minTemp.toFixed(1), 5, height - padding + 5);
         }
 
         // Initialize mode

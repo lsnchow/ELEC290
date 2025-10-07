@@ -266,7 +266,7 @@ if __name__ == '__main__':
         initialize_system()
         
         print(f"\n{'='*70}")
-        print(f"🦇 AUTONOMOUS TRACKING ROBOT CAR - ONLINE 🦇")
+        print(f"AUTONOMOUS TRACKING ROBOT - ONLINE")
         print(f"{'='*70}")
         print(f"Server: http://{config.HOST}:{config.PORT}")
         print(f"Access from your Mac: http://<raspberry-pi-ip>:{config.PORT}")
