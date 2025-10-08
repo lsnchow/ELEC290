@@ -311,17 +311,54 @@
 
             <!-- Sensor Readings -->
             <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">Sensor Readings</div>
+                <div class="panel-title">MPU6050 Accelerometer</div>
+                <div class="sensor-grid">
+                    <div class="sensor-box">
+                        <div class="sensor-label">Accel X</div>
+                        <div class="sensor-value" id="accelXValue">--</div>
+                        <div class="sensor-unit">m/s²</div>
+                    </div>
+                    <div class="sensor-box">
+                        <div class="sensor-label">Accel Y</div>
+                        <div class="sensor-value" id="accelYValue">--</div>
+                        <div class="sensor-unit">m/s²</div>
+                    </div>
+                    <div class="sensor-box">
+                        <div class="sensor-label">Accel Z</div>
+                        <div class="sensor-value" id="accelZValue">--</div>
+                        <div class="sensor-unit">m/s²</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-title">MPU6050 Gyroscope</div>
+                <div class="sensor-grid">
+                    <div class="sensor-box">
+                        <div class="sensor-label">Gyro X</div>
+                        <div class="sensor-value" id="gyroXValue">--</div>
+                        <div class="sensor-unit">rad/s</div>
+                    </div>
+                    <div class="sensor-box">
+                        <div class="sensor-label">Gyro Y</div>
+                        <div class="sensor-value" id="gyroYValue">--</div>
+                        <div class="sensor-unit">rad/s</div>
+                    </div>
+                    <div class="sensor-box">
+                        <div class="sensor-label">Gyro Z</div>
+                        <div class="sensor-value" id="gyroZValue">--</div>
+                        <div class="sensor-unit">rad/s</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" style="margin-top: 20px;">
+                <div class="panel-title">Other Sensors</div>
                 <div class="sensor-grid">
                     <div class="sensor-box">
                         <div class="sensor-label">Temperature</div>
                         <div class="sensor-value" id="tempValue">--</div>
                         <div class="sensor-unit">°C</div>
-                    </div>
-                    <div class="sensor-box">
-                        <div class="sensor-label">Gas Level</div>
-                        <div class="sensor-value" id="gasValue">--</div>
-                        <div class="sensor-unit">ppm</div>
                     </div>
                     <div class="sensor-box">
                         <div class="sensor-label">Distance</div>
@@ -414,7 +451,6 @@
         let currentMode = 'manual';
         let sensorData = {
             temperature: [],
-            gas: [],
             distance: [],
             timestamps: []
         };
@@ -519,30 +555,38 @@
                     data.tracking_status.enabled ? 'ENABLED' : 'DISABLED';
                 
                 // Update Arduino status
-                const arduinoConnected = data.arduino_data.gas !== null;
+                const arduinoConnected = data.arduino_data.accelX !== null;
                 document.getElementById('arduinoStatus').textContent = 
                     arduinoConnected ? 'CONNECTED' : 'DISCONNECTED';
                 
                 // Update sensor values
                 if (arduinoConnected) {
+                    document.getElementById('accelXValue').textContent = 
+                        data.arduino_data.accelX.toFixed(2);
+                    document.getElementById('accelYValue').textContent = 
+                        data.arduino_data.accelY.toFixed(2);
+                    document.getElementById('accelZValue').textContent = 
+                        data.arduino_data.accelZ.toFixed(2);
+                    document.getElementById('gyroXValue').textContent = 
+                        data.arduino_data.gyroX.toFixed(2);
+                    document.getElementById('gyroYValue').textContent = 
+                        data.arduino_data.gyroY.toFixed(2);
+                    document.getElementById('gyroZValue').textContent = 
+                        data.arduino_data.gyroZ.toFixed(2);
                     document.getElementById('tempValue').textContent = 
                         data.arduino_data.temperature.toFixed(1);
-                    document.getElementById('gasValue').textContent = 
-                        data.arduino_data.gas.toFixed(0);
                     document.getElementById('distValue').textContent = 
                         data.arduino_data.distance.toFixed(1);
                     
                     // Add to chart data
                     const now = new Date().toLocaleTimeString();
                     sensorData.temperature.push(data.arduino_data.temperature);
-                    sensorData.gas.push(data.arduino_data.gas);
                     sensorData.distance.push(data.arduino_data.distance);
                     sensorData.timestamps.push(now);
                     
                     // Keep only last MAX_DATA_POINTS
                     if (sensorData.temperature.length > MAX_DATA_POINTS) {
                         sensorData.temperature.shift();
-                        sensorData.gas.shift();
                         sensorData.distance.shift();
                         sensorData.timestamps.shift();
                     }

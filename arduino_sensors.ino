@@ -1,62 +1,98 @@
 /*
- * Arduino Sensor Reader for Batman Car
+ * Arduino Sensor Reader for Autonomous Tracking Robot
  * 
- * Reads gas sensor, temperature sensor, and ultrasonic distance sensor
+ * Reads MPU6050 (accelerometer/gyro) and ultrasonic distance sensor
  * Sends data to Raspberry Pi via serial in JSON format
  * 
  * Hardware:
- * - Gas Sensor: MQ-2/MQ-135 on analog pin A0
- * - Temperature Sensor: DHT11/DHT22 on digital pin 2
+ * - MPU6050: I2C (SDA=A4, SCL=A5 on Arduino Uno)
  * - Ultrasonic Sensor: HC-SR04 (TRIG=7, ECHO=8)
  * 
  * Serial: 9600 baud
+ * 
+ * Install required library:
+ * - Adafruit MPU6050 (Sketch → Include Library → Manage Libraries → search "Adafruit MPU6050")
  */
 
-#include <DHT.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
 
-// Pin definitions
-#define GAS_PIN A0
-#define DHT_PIN 2
-#define DHT_TYPE DHT11  // Change to DHT22 if using DHT22
+// Pin definitions for ultrasonic sensor
 #define TRIG_PIN 7
 #define ECHO_PIN 8
 
-// Initialize DHT sensor
-DHT dht(DHT_PIN, DHT_TYPE);
+// Initialize MPU6050
+Adafruit_MPU6050 mpu;
+
+// Variables to store MPU6050 data
+float accelX, accelY, accelZ;
+float gyroX, gyroY, gyroZ;
+float temperature;
 
 void setup() {
   // Initialize serial communication
   Serial.begin(9600);
   
-  // Initialize DHT sensor
-  dht.begin();
+  // Wait for serial to be ready
+  delay(1000);
+  
+  // Initialize MPU6050
+  if (!mpu.begin()) {
+    Serial.println("{\"error\":\"MPU6050 not found\"}");
+    while (1) {
+      delay(1000);
+    }
+  }
+  
+  // Configure MPU6050
+  mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
+  mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+  mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
   
   // Initialize ultrasonic sensor pins
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   
-  // Wait for serial to be ready
-  delay(2000);
+  Serial.println("{\"status\":\"Arduino Ready\"}");
+  delay(1000);
 }
 
 void loop() {
-  // Read gas sensor (analog value 0-1023)
-  int gasValue = analogRead(GAS_PIN);
+  // Read MPU6050 sensor
+  sensors_event_t a, g, temp;
+  mpu.getEvent(&a, &g, &temp);
   
-  // Read temperature from DHT sensor
-  float temperature = dht.readTemperature();
+  // Store acceleration values (m/s²)
+  accelX = a.acceleration.x;
+  accelY = a.acceleration.y;
+  accelZ = a.acceleration.z;
+  
+  // Store gyroscope values (rad/s)
+  gyroX = g.gyro.x;
+  gyroY = g.gyro.y;
+  gyroZ = g.gyro.z;
+  
+  // Store temperature (°C)
+  temperature = temp.temperature;
   
   // Read distance from ultrasonic sensor
   float distance = readUltrasonic();
   
-  // Check if readings are valid
-  if (isnan(temperature)) {
-    temperature = 25.0;  // Default value if sensor fails
-  }
-  
   // Send data as JSON
-  Serial.print("{\"gas\":");
-  Serial.print(gasValue);
+  // Format: {"accelX":X,"accelY":Y,"accelZ":Z,"gyroX":X,"gyroY":Y,"gyroZ":Z,"temp":T,"dist":D}
+  Serial.print("{\"accelX\":");
+  Serial.print(accelX, 2);
+  Serial.print(",\"accelY\":");
+  Serial.print(accelY, 2);
+  Serial.print(",\"accelZ\":");
+  Serial.print(accelZ, 2);
+  Serial.print(",\"gyroX\":");
+  Serial.print(gyroX, 2);
+  Serial.print(",\"gyroY\":");
+  Serial.print(gyroY, 2);
+  Serial.print(",\"gyroZ\":");
+  Serial.print(gyroZ, 2);
   Serial.print(",\"temp\":");
   Serial.print(temperature, 1);
   Serial.print(",\"dist\":");
