@@ -388,6 +388,10 @@
             <!-- WASD Controls -->
             <div class="panel" style="margin-top: 20px;">
                 <div class="panel-title">Manual Control</div>
+                <div style="margin-bottom: 10px; padding: 8px; background: #1a1a1a; border-radius: 4px; font-size: 0.85em; color: #ccc;">
+                    <strong>Controls:</strong> Use WASD keys or click buttons below
+                    <br><span id="controlStatus" style="color: #ffaa00;">Ready for manual control</span>
+                </div>
                 <div class="wasd-grid">
                     <button class="btn btn-w" id="btnW">W<br><span style="font-size:0.7em">Forward</span></button>
                     <button class="btn btn-a" id="btnA">A<br><span style="font-size:0.7em">Left</span></button>
@@ -467,6 +471,27 @@
             document.getElementById('connectionStatus').classList.add('disconnected');
         });
 
+        // Handle motor status updates
+        socket.on('motor_status', (data) => {
+            console.log('Motor status update:', data);
+            document.getElementById('motorDirection').textContent = 
+                data.direction ? data.direction.toUpperCase() : 'STOPPED';
+            document.getElementById('motorSpeed').textContent = 
+                data.speed ? data.speed + '%' : '0%';
+        });
+
+        // Handle errors
+        socket.on('error', (data) => {
+            console.error('Server error:', data.message);
+            alert(`Error: ${data.message}`);
+        });
+
+        // Handle mode changes
+        socket.on('mode_changed', (data) => {
+            console.log('Mode changed to:', data.mode);
+            setMode(data.mode);
+        });
+
         // Mode control
         function setMode(mode) {
             currentMode = mode;
@@ -476,6 +501,16 @@
             document.getElementById('btnManual').classList.toggle('active', mode === 'manual');
             document.getElementById('btnAuto').classList.toggle('active', mode === 'auto');
             document.getElementById('currentMode').textContent = mode.toUpperCase();
+            
+            // Update control status
+            const statusElement = document.getElementById('controlStatus');
+            if (mode === 'manual') {
+                statusElement.textContent = 'Ready for manual control';
+                statusElement.style.color = '#00ff00';
+            } else {
+                statusElement.textContent = 'Auto mode active';
+                statusElement.style.color = '#ffaa00';
+            }
         }
 
         // WASD keyboard controls
@@ -487,16 +522,33 @@
         };
         
         let pressedKeys = new Set();
+        let isControlling = false;
 
         document.addEventListener('keydown', (e) => {
+            // Prevent default behavior for WASD keys
             const key = e.key.toLowerCase();
-            if (keyMap[key] && !pressedKeys.has(key) && currentMode === 'manual') {
-                pressedKeys.add(key);
-                socket.emit('manual_control', { command: key });
+            if (keyMap[key]) {
+                e.preventDefault();
                 
-                // Visual feedback
-                const btnId = 'btn' + key.toUpperCase();
-                document.getElementById(btnId).classList.add('active');
+                if (!pressedKeys.has(key) && currentMode === 'manual') {
+                    pressedKeys.add(key);
+                    isControlling = true;
+                    
+                    socket.emit('manual_control', { command: key });
+                    console.log(`Motor command: ${key}`);
+                    
+                    // Visual feedback
+                    const btnId = 'btn' + key.toUpperCase();
+                    const btn = document.getElementById(btnId);
+                    if (btn) {
+                        btn.classList.add('active');
+                    }
+                    
+                    // Update control status
+                    const statusElement = document.getElementById('controlStatus');
+                    statusElement.textContent = `Moving: ${key.toUpperCase()}`;
+                    statusElement.style.color = '#00ff00';
+                }
             }
         });
 
@@ -504,28 +556,65 @@
             const key = e.key.toLowerCase();
             if (keyMap[key]) {
                 pressedKeys.delete(key);
-                socket.emit('manual_control', { command: 'stop' });
+                
+                // Stop motors when no keys are pressed
+                if (pressedKeys.size === 0 && isControlling) {
+                    socket.emit('manual_control', { command: 'stop' });
+                    console.log('Motor command: stop');
+                    isControlling = false;
+                    
+                    // Update control status
+                    const statusElement = document.getElementById('controlStatus');
+                    statusElement.textContent = 'Ready for manual control';
+                    statusElement.style.color = '#00ff00';
+                }
                 
                 // Remove visual feedback
                 const btnId = 'btn' + key.toUpperCase();
-                document.getElementById(btnId).classList.remove('active');
+                const btn = document.getElementById(btnId);
+                if (btn) {
+                    btn.classList.remove('active');
+                }
             }
         });
 
         // Button click controls
         ['W', 'A', 'S', 'D'].forEach(key => {
             const btn = document.getElementById('btn' + key);
-            btn.addEventListener('mousedown', () => {
-                if (currentMode === 'manual') {
-                    socket.emit('manual_control', { command: key.toLowerCase() });
-                }
-            });
-            btn.addEventListener('mouseup', () => {
-                socket.emit('manual_control', { command: 'stop' });
-            });
-            btn.addEventListener('mouseleave', () => {
-                socket.emit('manual_control', { command: 'stop' });
-            });
+            if (btn) {
+                btn.addEventListener('mousedown', () => {
+                    if (currentMode === 'manual') {
+                        btn.classList.add('active');
+                        socket.emit('manual_control', { command: key.toLowerCase() });
+                        console.log(`Button motor command: ${key.toLowerCase()}`);
+                        
+                        // Update control status
+                        const statusElement = document.getElementById('controlStatus');
+                        statusElement.textContent = `Moving: ${key}`;
+                        statusElement.style.color = '#00ff00';
+                    }
+                });
+                btn.addEventListener('mouseup', () => {
+                    btn.classList.remove('active');
+                    socket.emit('manual_control', { command: 'stop' });
+                    console.log('Button motor command: stop');
+                    
+                    // Update control status
+                    const statusElement = document.getElementById('controlStatus');
+                    statusElement.textContent = 'Ready for manual control';
+                    statusElement.style.color = '#00ff00';
+                });
+                btn.addEventListener('mouseleave', () => {
+                    btn.classList.remove('active');
+                    socket.emit('manual_control', { command: 'stop' });
+                    console.log('Button motor command: stop (mouse leave)');
+                    
+                    // Update control status
+                    const statusElement = document.getElementById('controlStatus');
+                    statusElement.textContent = 'Ready for manual control';
+                    statusElement.style.color = '#00ff00';
+                });
+            }
         });
 
         // Emergency stop
@@ -541,47 +630,48 @@
                 const data = await response.json();
                 
                 // Update motor status
-                document.getElementById('motorDirection').textContent = 
-                    data.motor_status.direction.toUpperCase();
-                document.getElementById('motorSpeed').textContent = 
-                    data.motor_status.speed + '%';
-                
-                // Update FPS and detections
-                document.getElementById('fps').textContent = 
-                    data.fps ? data.fps.toFixed(1) : '--';
+                if (data.motors) {
+                    document.getElementById('motorDirection').textContent = 
+                        data.motors.direction.toUpperCase();
+                    document.getElementById('motorSpeed').textContent = 
+                        data.motors.speed + '%';
+                }
                 
                 // Update tracking status
-                document.getElementById('trackingStatus').textContent = 
-                    data.tracking_status.enabled ? 'ENABLED' : 'DISABLED';
+                if (data.tracking_enabled !== undefined) {
+                    document.getElementById('trackingStatus').textContent = 
+                        data.tracking_enabled ? 'ENABLED' : 'DISABLED';
+                }
                 
                 // Update Arduino status
-                const arduinoConnected = data.arduino_data.accelX !== null;
+                const sensors = data.sensors || {};
+                const arduinoConnected = sensors.accelX !== undefined && sensors.accelX !== null;
                 document.getElementById('arduinoStatus').textContent = 
                     arduinoConnected ? 'CONNECTED' : 'DISCONNECTED';
                 
                 // Update sensor values
-                if (arduinoConnected) {
+                if (arduinoConnected && sensors) {
                     document.getElementById('accelXValue').textContent = 
-                        data.arduino_data.accelX.toFixed(2);
+                        sensors.accelX ? sensors.accelX.toFixed(2) : '--';
                     document.getElementById('accelYValue').textContent = 
-                        data.arduino_data.accelY.toFixed(2);
+                        sensors.accelY ? sensors.accelY.toFixed(2) : '--';
                     document.getElementById('accelZValue').textContent = 
-                        data.arduino_data.accelZ.toFixed(2);
+                        sensors.accelZ ? sensors.accelZ.toFixed(2) : '--';
                     document.getElementById('gyroXValue').textContent = 
-                        data.arduino_data.gyroX.toFixed(2);
+                        sensors.gyroX ? sensors.gyroX.toFixed(2) : '--';
                     document.getElementById('gyroYValue').textContent = 
-                        data.arduino_data.gyroY.toFixed(2);
+                        sensors.gyroY ? sensors.gyroY.toFixed(2) : '--';
                     document.getElementById('gyroZValue').textContent = 
-                        data.arduino_data.gyroZ.toFixed(2);
+                        sensors.gyroZ ? sensors.gyroZ.toFixed(2) : '--';
                     document.getElementById('tempValue').textContent = 
-                        data.arduino_data.temperature.toFixed(1);
+                        sensors.temperature ? sensors.temperature.toFixed(1) : '--';
                     document.getElementById('distValue').textContent = 
-                        data.arduino_data.distance.toFixed(1);
+                        sensors.distance ? sensors.distance.toFixed(1) : '--';
                     
                     // Add to chart data
                     const now = new Date().toLocaleTimeString();
-                    sensorData.temperature.push(data.arduino_data.temperature);
-                    sensorData.distance.push(data.arduino_data.distance);
+                    sensorData.temperature.push(sensors.temperature);
+                    sensorData.distance.push(sensors.distance);
                     sensorData.timestamps.push(now);
                     
                     // Keep only last MAX_DATA_POINTS

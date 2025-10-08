@@ -1,6 +1,8 @@
 """
 L298N Motor Driver Controller
-Controls two DC motors for a robot car
+
+Controls two DC motors for a robot car using L298N motor driver board.
+Supports both RPi.GPIO and gpiod libraries with fallback to dummy mode.
 """
 import time
 

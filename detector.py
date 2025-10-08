@@ -2,10 +2,11 @@
 YOLOv8 Human Detection Module (Optimized for Raspberry Pi)
 Handles video capture and human detection with bounding boxes
 """
+import time
 import cv2
 import numpy as np
 from ultralytics import YOLO
-import time
+
 import config
 
 
@@ -92,22 +93,27 @@ class HumanDetector:
         
         # Skip frames for better performance
         if self.frame_count % config.PROCESS_EVERY_N_FRAMES != 0:
-            # Use cached results
+            # Use cached results if available
             if self.last_results is not None:
                 return self._draw_cached_results(frame), self.last_human_count
+            # Return frame without detection if no cached results
             return frame, 0
         
         # Run YOLOv8 inference with optimization
-        results = self.model(
-            frame, 
-            conf=self.conf_threshold, 
-            verbose=False,
-            imgsz=config.IMGSZ,  # Smaller size = much faster
-            iou=config.IOU_THRESHOLD,
-            classes=[self.person_class_id],  # Only detect persons
-            device='cpu',
-            half=False  # Don't use FP16 on CPU
-        )
+        try:
+            results = self.model(
+                frame, 
+                conf=self.conf_threshold, 
+                verbose=False,
+                imgsz=config.IMGSZ,  # Smaller size = much faster
+                iou=config.IOU_THRESHOLD,
+                classes=[self.person_class_id],  # Only detect persons
+                device='cpu',
+                half=False  # Don't use FP16 on CPU
+            )
+        except Exception as e:
+            print(f"YOLO inference error: {e}")
+            return frame, 0
         
         # Store results for caching
         self.last_results = results

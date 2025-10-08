@@ -1,6 +1,9 @@
 """
 Arduino Serial Communication
-Reads sensor data (gas, temperature, distance) from Arduino via serial port
+
+Reads sensor data (MPU6050 accelerometer/gyroscope, temperature, distance) 
+from Arduino via serial port. Supports JSON and CSV data formats with
+automatic port detection and simulation mode fallback.
 """
 import serial
 import json
@@ -210,7 +213,7 @@ if __name__ == "__main__":
     try:
         while True:
             data = arduino.get_data()
-            print(f"Gas: {data['gas']}, Temp: {data['temperature']}°C, Distance: {data['distance']}cm")
+            print(f"Temp: {data['temperature']}°C, Distance: {data['distance']}cm")
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n\nStopping...")

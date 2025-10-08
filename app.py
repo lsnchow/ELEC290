@@ -1,10 +1,11 @@
 """
 Autonomous Tracking Robot Car - Flask Server with WebSocket Control
 """
+import time
+import traceback
 from flask import Flask, render_template, Response, jsonify
 from flask_socketio import SocketIO, emit
-import cv2
-import time
+
 import config
 from detector import HumanDetector
 from motors import MotorController
@@ -43,6 +44,17 @@ def initialize_system():
         enb=config.ENB, in3=config.IN3, in4=config.IN4
     )
     
+    # Test motor controller
+    if motors:
+        print("Testing motor controller...")
+        try:
+            motors.forward(30)
+            time.sleep(0.5)
+            motors.stop()
+            print("✓ Motor controller test successful")
+        except Exception as e:
+            print(f"⚠️  Motor controller test failed: {e}")
+    
     # Initialize Arduino serial
     arduino = ArduinoSerial(
         port=config.ARDUINO_PORT,
@@ -57,6 +69,8 @@ def initialize_system():
         tracker.enable()
     
     print("System initialized successfully!")
+    print(f"Motor controller: {'Ready' if motors else 'Not available'}")
+    print(f"Arduino sensors: {'Connected' if arduino.serial else 'Simulation mode'}")
 
 
 def generate_frames():
@@ -68,26 +82,44 @@ def generate_frames():
     
     frame_time = time.time()
     fps = 0
+    consecutive_errors = 0
+    max_consecutive_errors = 10
     
     while True:
         try:
             # Read frame from camera
             success, frame = detector.read_frame()
             if not success:
-                print("Failed to read frame from camera")
-                break
+                consecutive_errors += 1
+                print(f"Failed to read frame from camera (error {consecutive_errors})")
+                if consecutive_errors >= max_consecutive_errors:
+                    print("Too many consecutive camera errors, stopping stream")
+                    break
+                time.sleep(0.1)  # Brief pause before retry
+                continue
+            
+            # Reset error counter on successful frame read
+            consecutive_errors = 0
             
             # Detect humans
             processed_frame, human_count = detector.detect_humans(frame)
             
             # Get Arduino sensor data
-            arduino_data = arduino.get_data()
-            distance = arduino_data['distance']
+            try:
+                arduino_data = arduino.get_data() if arduino else {}
+                distance = arduino_data.get('distance', 0)
+            except Exception as e:
+                print(f"Arduino data error: {e}")
+                distance = 0
             
             # Auto-tracking if enabled
             if control_mode == 'auto' and tracker.enabled:
                 # Get detections for tracking
-                detections = detector.last_results[0].boxes.xyxy.cpu().numpy().tolist() if detector.last_results and len(detector.last_results) > 0 and detector.last_results[0].boxes is not None else []
+                detections = []
+                if detector.last_results and len(detector.last_results) > 0:
+                    result = detector.last_results[0]
+                    if result.boxes is not None:
+                        detections = result.boxes.xyxy.cpu().numpy().tolist()
                 tracking_status = tracker.process_detection(detections, human_count)
             
             # Calculate FPS
@@ -126,8 +158,12 @@ def generate_frames():
             time.sleep(1 / config.STREAM_FPS_LIMIT)
             
         except Exception as e:
+            consecutive_errors += 1
             print(f"Error in frame generation: {e}")
-            break
+            if consecutive_errors >= max_consecutive_errors:
+                print("Too many consecutive errors, stopping stream")
+                break
+            time.sleep(0.1)  # Brief pause before retry
 
 
 @app.route('/')
@@ -210,23 +246,40 @@ def handle_manual_control(data):
     global control_mode, motors
     
     if control_mode != 'manual':
+        emit('error', {'message': 'Not in manual mode'})
+        return
+    
+    if not motors:
+        emit('error', {'message': 'Motor controller not initialized'})
         return
     
     command = data.get('command', 'stop')
     speed = data.get('speed', config.DEFAULT_SPEED)
     
-    if command == 'forward' or command == 'w':
-        motors.forward(speed)
-    elif command == 'backward' or command == 's':
-        motors.backward(speed)
-    elif command == 'left' or command == 'a':
-        motors.left(speed)
-    elif command == 'right' or command == 'd':
-        motors.right(speed)
-    elif command == 'stop':
-        motors.stop()
-    
-    emit('motor_status', motors.get_status(), broadcast=True)
+    try:
+        if command == 'forward' or command == 'w':
+            motors.forward(speed)
+            print(f"Motor: Forward at {speed}%")
+        elif command == 'backward' or command == 's':
+            motors.backward(speed)
+            print(f"Motor: Backward at {speed}%")
+        elif command == 'left' or command == 'a':
+            motors.left(speed)
+            print(f"Motor: Left at {speed}%")
+        elif command == 'right' or command == 'd':
+            motors.right(speed)
+            print(f"Motor: Right at {speed}%")
+        elif command == 'stop':
+            motors.stop()
+            print("Motor: Stop")
+        
+        # Send motor status update
+        motor_status = motors.get_status()
+        emit('motor_status', motor_status, broadcast=True)
+        
+    except Exception as e:
+        print(f"Motor control error: {e}")
+        emit('error', {'message': f'Motor control error: {str(e)}'})
 
 @socketio.on('emergency_stop')
 def handle_emergency_stop():
@@ -287,7 +340,6 @@ if __name__ == '__main__':
         print("\n\nReceived interrupt signal...")
     except Exception as e:
         print(f"\nError: {e}")
-        import traceback
         traceback.print_exc()
     finally:
         cleanup()

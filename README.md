@@ -1,20 +1,23 @@
-# Raspberry Pi Human Detection & Distance Monitoring System
+# Autonomous Tracking Robot Car
 
-A real-time human detection system using YOLOv8 with ultrasonic distance monitoring, streaming via MJPEG to a web interface.
+An intelligent robot car that uses YOLOv8 computer vision for real-time human detection and autonomous tracking. Features motor control, sensor integration, and a web-based control interface.
 
 ## Features
-- 🎥 Real-time webcam feed with YOLOv8 human detection
-- 📏 HC-SR04 ultrasonic distance measurement
-- 🌐 MJPEG streaming to web interface
-- 🎯 Bounding boxes and detection counts
-- 📊 Live distance readings overlaid on video
+- 🤖 **Autonomous Tracking**: YOLOv8-powered person following
+- 🎮 **Manual Control**: WASD keyboard/button controls via web interface
+- 🎥 **Real-time Video**: MJPEG streaming with detection overlays
+- 📊 **Sensor Integration**: MPU6050 accelerometer/gyroscope + ultrasonic distance
+- 🌐 **Web Interface**: Modern responsive control panel
+- ⚡ **Performance Optimized**: Frame skipping and caching for Raspberry Pi
+- 🔧 **Robust Error Handling**: Automatic recovery from hardware failures
 
 ## Hardware Requirements
-- Raspberry Pi 5
-- USB Webcam (or Pi Camera)
-- HC-SR04 Ultrasonic Sensor
-- Resistors: 1kΩ and 2kΩ (for voltage divider)
-- Breadboard and jumper wires
+- **Raspberry Pi 5** (or Pi 4)
+- **USB Webcam** (or Pi Camera)
+- **L298N Motor Driver** + 2x DC Motors
+- **Arduino Uno** + MPU6050 + HC-SR04 Ultrasonic Sensor
+- **Resistors**: 1kΩ and 2kΩ (for voltage divider)
+- **Breadboard and jumper wires**
 
 ## HC-SR04 Wiring with Voltage Divider
 
@@ -115,16 +118,31 @@ Edit `config.py` to change:
 
 ## Project Structure
 ```
-ELEC290-src/
-├── app.py              # Main Flask application
-├── detector.py         # YOLOv8 detection module
-├── ultrasonic.py       # HC-SR04 sensor module
+ELEC290/
+├── app.py              # Main Flask application with WebSocket controls
+├── detector.py         # YOLOv8 human detection module
+├── motors.py           # L298N motor controller
+├── tracking.py         # Autonomous person tracking logic
+├── arduino_serial.py   # Arduino sensor communication
+├── arduino_sensors.ino # Arduino sketch for MPU6050 + ultrasonic
 ├── config.py           # Configuration settings
-├── requirements.txt    # Python dependencies
 ├── templates/
-│   └── index.html     # Web interface
+│   └── index.html     # Modern web control interface
+├── requirements.txt    # Python dependencies
 └── README.md          # This file
 ```
+
+## Control Modes
+
+### Manual Mode
+- Use WASD keys or on-screen buttons to control the robot
+- Real-time sensor data display
+- Emergency stop functionality
+
+### Auto Mode
+- Autonomous person tracking and following
+- Maintains safe distance using ultrasonic sensor
+- Automatic centering and distance control
 
 ## License
 MIT

@@ -1,5 +1,8 @@
 """
 Configuration settings for autonomous tracking robot car
+
+This module contains all configuration parameters for the robot system including
+camera settings, YOLO model parameters, motor control pins, and tracking behavior.
 """
 
 # Camera settings
