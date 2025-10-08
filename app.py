@@ -1,15 +1,18 @@
 """
 Autonomous Tracking Robot Car - Flask Server with WebSocket Control
 """
-from flask import Flask, render_template, Response, jsonify
+from flask import Flask, render_template, Response, jsonify, send_file
 from flask_socketio import SocketIO, emit
 import cv2
 import time
+from datetime import datetime
+from io import BytesIO
 import config
 from detector import HumanDetector
 from motors import MotorController
 from arduino_serial import ArduinoSerial
 from tracking import PersonTracker
+from sensor_logger import SensorLogger
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'batman-secret-key-290'
@@ -20,13 +23,14 @@ detector = None
 motors = None
 arduino = None
 tracker = None
+sensor_logger = None
 control_mode = config.DEFAULT_MODE  # 'manual' or 'auto'
 current_fps = 0  # Track current FPS
 
 
 def initialize_system():
     """Initialize all systems"""
-    global detector, motors, arduino, tracker
+    global detector, motors, arduino, tracker, sensor_logger
     
     print("Initializing autonomous tracking robot...")
     
@@ -51,6 +55,9 @@ def initialize_system():
         debug=config.ARDUINO_DEBUG
     )
     arduino.start()
+    
+    # Initialize sensor logger
+    sensor_logger = SensorLogger(max_entries=2000)  # Keep last 2000 readings
     
     # Initialize person tracker
     tracker = PersonTracker(motors, arduino)
@@ -84,6 +91,10 @@ def generate_frames():
             # Get Arduino sensor data
             arduino_data = arduino.get_data()
             distance = arduino_data['distance']
+            
+            # Log sensor data
+            if sensor_logger:
+                sensor_logger.log_data(arduino_data)
             
             # Auto-tracking if enabled
             if control_mode == 'auto' and tracker.enabled:
@@ -187,6 +198,61 @@ def sensor_data():
     
     if arduino:
         return jsonify(arduino.get_data())
+    return jsonify({'error': 'Arduino not initialized'})
+
+
+@app.route('/download_sensor_log')
+def download_sensor_log():
+    """Download sensor log as CSV file (Excel compatible)"""
+    global sensor_logger
+    
+    if not sensor_logger:
+        return jsonify({'error': 'Sensor logger not initialized'}), 500
+    
+    # Get CSV data
+    csv_data = sensor_logger.get_csv_data()
+    
+    if csv_data == "No data logged yet":
+        return jsonify({'error': 'No sensor data logged yet'}), 404
+    
+    # Create a BytesIO object for the file
+    output = BytesIO()
+    output.write(csv_data.encode('utf-8'))
+    output.seek(0)
+    
+    # Generate filename with timestamp
+    filename = f"sensor_log_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+    
+    return send_file(
+        output,
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name=filename
+    )
+
+
+@app.route('/log_stats')
+def log_stats():
+    """Get statistics about sensor log"""
+    global sensor_logger
+    
+    if not sensor_logger:
+        return jsonify({'error': 'Sensor logger not initialized'}), 500
+    
+    stats = sensor_logger.get_stats()
+    return jsonify(stats)
+
+
+@app.route('/clear_log', methods=['POST'])
+def clear_log():
+    """Clear sensor log"""
+    global sensor_logger
+    
+    if not sensor_logger:
+        return jsonify({'error': 'Sensor logger not initialized'}), 500
+    
+    sensor_logger.clear_log()
+    return jsonify({'success': True, 'message': 'Sensor log cleared'})
     return jsonify({'error': 'Arduino not connected'})
 
 # WebSocket event handlers

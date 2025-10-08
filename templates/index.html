@@ -155,6 +155,11 @@
             color: #fff;
         }
         
+        .btn-small {
+            padding: 8px 14px;
+            font-size: 0.8em;
+        }
+        
         .wasd-grid {
             display: grid;
             grid-template-areas:
@@ -370,6 +375,20 @@
                 <!-- Charts -->
                 <div class="chart-container">
                     <canvas id="temperatureChart" width="100%" height="200"></canvas>
+                </div>
+                
+                <!-- Data Logging -->
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #222;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <div style="font-size: 0.85em; color: #999;">
+                            <span id="logEntriesCount">0</span> entries logged
+                        </div>
+                        <button class="btn btn-small" onclick="clearLog()" style="padding: 6px 12px; font-size: 0.8em;">Clear Log</button>
+                    </div>
+                    <button class="btn" onclick="downloadLog()" style="width: 100%;">
+                        📥 Download Sensor Log (Excel)
+                    </button>
+                    <div id="logStats" style="margin-top: 10px; font-size: 0.75em; color: #666; line-height: 1.6;"></div>
                 </div>
             </div>
         </div>
@@ -672,6 +691,50 @@
             ctx.fillText(maxTemp.toFixed(1), 5, padding + 15);
             ctx.fillText(minTemp.toFixed(1), 5, height - padding + 5);
         }
+
+        // Download sensor log
+        function downloadLog() {
+            window.location.href = '/download_sensor_log';
+        }
+        
+        // Clear sensor log
+        function clearLog() {
+            if (confirm('Clear all logged sensor data?')) {
+                fetch('/clear_log', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert('Sensor log cleared!');
+                            updateLogStats();
+                        }
+                    })
+                    .catch(error => console.error('Error clearing log:', error));
+            }
+        }
+        
+        // Update log statistics
+        function updateLogStats() {
+            fetch('/log_stats')
+                .then(response => response.json())
+                .then(stats => {
+                    document.getElementById('logEntriesCount').textContent = stats.count;
+                    
+                    if (stats.count > 0) {
+                        const statsDiv = document.getElementById('logStats');
+                        statsDiv.innerHTML = `
+                            Start: ${stats.start_time}<br>
+                            End: ${stats.end_time}<br>
+                            Duration: ${stats.duration.toFixed(1)}s<br>
+                            Temp: ${stats.temp_min.toFixed(1)}°C - ${stats.temp_max.toFixed(1)}°C (avg: ${stats.temp_avg.toFixed(1)}°C)
+                        `;
+                    }
+                })
+                .catch(error => console.error('Error fetching log stats:', error));
+        }
+        
+        // Update log stats periodically
+        setInterval(updateLogStats, 5000);
+        updateLogStats();
 
         // Initialize mode
         setMode('manual');
