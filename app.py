@@ -46,7 +46,8 @@ def initialize_system():
     # Initialize Arduino serial
     arduino = ArduinoSerial(
         port=config.ARDUINO_PORT,
-        baudrate=config.ARDUINO_BAUD
+        baudrate=config.ARDUINO_BAUD,
+        debug=config.ARDUINO_DEBUG
     )
     arduino.start()
     
