@@ -67,7 +67,7 @@ void loop() {
   Serial.print(",\"distCM\":"); Serial.print(distCM, 1);
   Serial.println("}");
 
-  delay(100); // ~10 Hz
+  delay(50); // ~20 Hz - faster sensor updates
 }
 
 float readUltrasonicCM() {

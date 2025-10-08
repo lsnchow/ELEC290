@@ -158,7 +158,7 @@ class ArduinoSerial:
                     import traceback
                     traceback.print_exc()
             
-            time.sleep(0.1)
+            time.sleep(0.02)  # Faster polling - check for data every 20ms
     
     def _simulate_data(self):
         """Simulate sensor data when Arduino not connected"""
@@ -173,7 +173,7 @@ class ArduinoSerial:
             self.temperature = round(random.uniform(20, 30), 1)
             self.distance = round(random.uniform(5, 50), 1)
             self.last_update = time.time()
-            time.sleep(0.5)
+            time.sleep(0.05)  # Faster simulation updates - 20 Hz
     
     def get_data(self):
         """Get current sensor data"""
