@@ -54,9 +54,38 @@ class MotorController:
             
             print(f"✓ Motors initialized (RPi.GPIO)")
         elif USE_GPIOD:
-            # TODO: Implement gpiod PWM (more complex)
-            print("⚠️  gpiod PWM not implemented yet, using dummy mode")
-            self.dummy_mode = True
+            # gpiod implementation for Raspberry Pi 5
+            try:
+                self.chip = gpiod.Chip('gpiochip4')  # Pi 5 uses gpiochip4
+                
+                # Request GPIO lines
+                self.line_ena = self.chip.get_line(ena)
+                self.line_in1 = self.chip.get_line(in1)
+                self.line_in2 = self.chip.get_line(in2)
+                self.line_enb = self.chip.get_line(enb)
+                self.line_in3 = self.chip.get_line(in3)
+                self.line_in4 = self.chip.get_line(in4)
+                
+                # Configure as outputs
+                self.line_ena.request(consumer="motor_ena", type=gpiod.LINE_REQ_DIR_OUT)
+                self.line_in1.request(consumer="motor_in1", type=gpiod.LINE_REQ_DIR_OUT)
+                self.line_in2.request(consumer="motor_in2", type=gpiod.LINE_REQ_DIR_OUT)
+                self.line_enb.request(consumer="motor_enb", type=gpiod.LINE_REQ_DIR_OUT)
+                self.line_in3.request(consumer="motor_in3", type=gpiod.LINE_REQ_DIR_OUT)
+                self.line_in4.request(consumer="motor_in4", type=gpiod.LINE_REQ_DIR_OUT)
+                
+                # Start with motors off
+                self.line_ena.set_value(0)
+                self.line_enb.set_value(0)
+                
+                # Software PWM simulation (no hardware PWM on all pins)
+                self._pwm_duty_a = 0
+                self._pwm_duty_b = 0
+                
+                print(f"✓ Motors initialized (gpiod on Pi 5)")
+            except Exception as e:
+                print(f"⚠️  gpiod init failed: {e}, using dummy mode")
+                self.dummy_mode = True
         else:
             self.dummy_mode = True
             print("⚠️  Motors in DUMMY MODE")
@@ -79,6 +108,18 @@ class MotorController:
             GPIO.output(self.in4, GPIO.LOW)
             self.pwm_a.ChangeDutyCycle(speed)
             self.pwm_b.ChangeDutyCycle(speed)
+        elif USE_GPIOD:
+            # Forward: IN1=HIGH, IN2=LOW, IN3=HIGH, IN4=LOW
+            self.line_in1.set_value(1)
+            self.line_in2.set_value(0)
+            self.line_in3.set_value(1)
+            self.line_in4.set_value(0)
+            # Simple on/off for now (full speed or off)
+            # TODO: Implement software PWM for variable speed
+            self.line_ena.set_value(1 if speed > 0 else 0)
+            self.line_enb.set_value(1 if speed > 0 else 0)
+            self._pwm_duty_a = speed
+            self._pwm_duty_b = speed
         
         self.current_direction = "forward"
         self.current_speed = speed
@@ -98,6 +139,16 @@ class MotorController:
             GPIO.output(self.in4, GPIO.HIGH)
             self.pwm_a.ChangeDutyCycle(speed)
             self.pwm_b.ChangeDutyCycle(speed)
+        elif USE_GPIOD:
+            # Backward: IN1=LOW, IN2=HIGH, IN3=LOW, IN4=HIGH
+            self.line_in1.set_value(0)
+            self.line_in2.set_value(1)
+            self.line_in3.set_value(0)
+            self.line_in4.set_value(1)
+            self.line_ena.set_value(1 if speed > 0 else 0)
+            self.line_enb.set_value(1 if speed > 0 else 0)
+            self._pwm_duty_a = speed
+            self._pwm_duty_b = speed
         
         self.current_direction = "backward"
         self.current_speed = speed
@@ -118,6 +169,16 @@ class MotorController:
             GPIO.output(self.in4, GPIO.LOW)
             self.pwm_a.ChangeDutyCycle(speed // 2)
             self.pwm_b.ChangeDutyCycle(speed)
+        elif USE_GPIOD:
+            # Left motor backward/slow, right motor forward
+            self.line_in1.set_value(0)
+            self.line_in2.set_value(1)
+            self.line_in3.set_value(1)
+            self.line_in4.set_value(0)
+            self.line_ena.set_value(0)  # Left motor off/slow
+            self.line_enb.set_value(1 if speed > 0 else 0)  # Right motor on
+            self._pwm_duty_a = speed // 2
+            self._pwm_duty_b = speed
         
         self.current_direction = "left"
         self.current_speed = speed
@@ -138,6 +199,16 @@ class MotorController:
             GPIO.output(self.in4, GPIO.HIGH)
             self.pwm_a.ChangeDutyCycle(speed)
             self.pwm_b.ChangeDutyCycle(speed // 2)
+        elif USE_GPIOD:
+            # Left motor forward, right motor backward/slow
+            self.line_in1.set_value(1)
+            self.line_in2.set_value(0)
+            self.line_in3.set_value(0)
+            self.line_in4.set_value(1)
+            self.line_ena.set_value(1 if speed > 0 else 0)  # Left motor on
+            self.line_enb.set_value(0)  # Right motor off/slow
+            self._pwm_duty_a = speed
+            self._pwm_duty_b = speed // 2
         
         self.current_direction = "right"
         self.current_speed = speed
@@ -154,6 +225,16 @@ class MotorController:
             GPIO.output([self.in1, self.in2, self.in3, self.in4], GPIO.LOW)
             self.pwm_a.ChangeDutyCycle(0)
             self.pwm_b.ChangeDutyCycle(0)
+        elif USE_GPIOD:
+            # Turn off all motor control lines
+            self.line_in1.set_value(0)
+            self.line_in2.set_value(0)
+            self.line_in3.set_value(0)
+            self.line_in4.set_value(0)
+            self.line_ena.set_value(0)
+            self.line_enb.set_value(0)
+            self._pwm_duty_a = 0
+            self._pwm_duty_b = 0
         
         self.current_direction = "stop"
         self.current_speed = 0
@@ -172,6 +253,17 @@ class MotorController:
             self.pwm_a.stop()
             self.pwm_b.stop()
             GPIO.cleanup([self.ena, self.in1, self.in2, self.enb, self.in3, self.in4])
+        elif USE_GPIOD and not self.dummy_mode:
+            # Release all GPIO lines
+            try:
+                self.line_ena.release()
+                self.line_in1.release()
+                self.line_in2.release()
+                self.line_enb.release()
+                self.line_in3.release()
+                self.line_in4.release()
+            except:
+                pass
         print("Motors cleanup complete")
 
 
