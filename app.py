@@ -87,8 +87,18 @@ def generate_frames():
             
             # Auto-tracking if enabled
             if control_mode == 'auto' and tracker.enabled:
-                # Get detections for tracking
-                detections = detector.last_results[0].boxes.xyxy.cpu().numpy().tolist() if detector.last_results and len(detector.last_results) > 0 and detector.last_results[0].boxes is not None else []
+                # Get detections for tracking (safe extraction)
+                detections = []
+                try:
+                    if detector.last_results and len(detector.last_results) > 0:
+                        result = detector.last_results[0]
+                        if hasattr(result, 'boxes') and result.boxes is not None:
+                            boxes = result.boxes.xyxy.cpu().numpy()
+                            detections = boxes.tolist()
+                except Exception as e:
+                    print(f"Detection extraction error: {e}")
+                    detections = []
+                
                 tracking_status = tracker.process_detection(detections, human_count)
             
             # Calculate FPS

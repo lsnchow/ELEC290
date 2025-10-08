@@ -178,7 +178,7 @@ class HumanDetector:
         Args:
             frame: Input frame
             human_count: Number of detected humans
-            distance: Distance from ultrasonic sensor (cm)
+            distance: Distance from ultrasonic sensor (cm) - NOT DISPLAYED
             fps: Frames per second
             
         Returns:
@@ -189,26 +189,15 @@ class HumanDetector:
         # Semi-transparent overlay background
         overlay = frame.copy()
         
-        # Top-left: Human count
+        # Top-left: Human count only (removed distance display)
         count_text = f"Humans: {human_count}"
         cv2.rectangle(overlay, (10, 10), (200, 60), (0, 0, 0), -1)
         cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
         cv2.putText(frame, count_text, (20, 45), 
                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
         
-        # Top-right: Distance
-        if distance > 0:
-            distance_text = f"Distance: {distance:.1f} cm"
-        else:
-            distance_text = "Distance: -- cm"
-        
-        text_size, _ = cv2.getTextSize(distance_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)
-        overlay = frame.copy()
-        cv2.rectangle(overlay, (width - text_size[0] - 30, 10), 
-                     (width - 10, 50), (0, 0, 0), -1)
-        cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
-        cv2.putText(frame, distance_text, (width - text_size[0] - 20, 40), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        # Distance display REMOVED per user request
+        _skip_distance = distance  # Use variable to avoid unused warning
         
         # Bottom-left: FPS
         if fps > 0:
