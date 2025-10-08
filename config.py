@@ -19,10 +19,11 @@ IMGSZ = 256
 PROCESS_EVERY_N_FRAMES = 3
 
 # Motor control pins (L298N) - BCM numbering
-ENA = 17  # Motor A PWM (Physical Pin 11)
-IN1 = 27  # Motor A Direction 1 (Physical Pin 13)
-IN2 = 22  # Motor A Direction 2 (Physical Pin 15)
-ENB = 18  # Motor B PWM (Physical Pin 12)
+# Updated pinout for gpiozero compatibility
+ENA = 22  # Motor A PWM (Physical Pin 15)
+IN1 = 17  # Motor A Direction 1 (Physical Pin 11)
+IN2 = 27  # Motor A Direction 2 (Physical Pin 13)
+ENB = 25  # Motor B PWM (Physical Pin 22)
 IN3 = 23  # Motor B Direction 1 (Physical Pin 16)
 IN4 = 24  # Motor B Direction 2 (Physical Pin 18)
 
