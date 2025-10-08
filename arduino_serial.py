@@ -101,7 +101,7 @@ class ArduinoSerial:
                     if self.debug:
                         print(f"[Arduino] Raw: {repr(line)}")
                     
-                    # Expected format: {"accelX":X,"accelY":Y,"accelZ":Z,"gyroX":X,"gyroY":Y,"gyroZ":Z,"temp":T,"dist":D}
+                    # Expected format: {"accelX":X,"accelY":Y,"accelZ":Z,"gyroX":X,"gyroY":Y,"gyroZ":Z,"tempC":T,"distCM":D}
                     try:
                         data = json.loads(line)
                         self.accel_x = data.get('accelX', 0)
@@ -110,8 +110,8 @@ class ArduinoSerial:
                         self.gyro_x = data.get('gyroX', 0)
                         self.gyro_y = data.get('gyroY', 0)
                         self.gyro_z = data.get('gyroZ', 0)
-                        self.temperature = data.get('temp', 0)
-                        self.distance = data.get('dist', 0)
+                        self.temperature = data.get('tempC', data.get('temp', 0))  # Support both tempC and temp
+                        self.distance = data.get('distCM', data.get('dist', 0))  # Support both distCM and dist
                         self.last_update = time.time()
                         lines_read += 1
                         

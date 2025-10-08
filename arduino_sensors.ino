@@ -1,127 +1,85 @@
 /*
- * Arduino Sensor Reader for Autonomous Tracking Robot
- * 
- * Reads MPU6050 (accelerometer/gyro) and ultrasonic distance sensor
- * Sends data to Raspberry Pi via serial in JSON format
- * 
- * Hardware:
- * - MPU6050: I2C (SDA=A4, SCL=A5 on Arduino Uno)
- * - Ultrasonic Sensor: HC-SR04 (TRIG=7, ECHO=8)
- * 
- * Serial: 9600 baud
- * 
- * Install required library:
- * - Adafruit MPU6050 (Sketch → Include Library → Manage Libraries → search "Adafruit MPU6050")
+ * MPU6050 + HC-SR04 JSON streamer (Arduino Uno)
+ * - I2C: SDA=A4, SCL=A5
+ * - HC-SR04: TRIG=D7, ECHO=D8
+ * - Serial: 9600 baud
+ *
+ * Libraries:
+ *  - Adafruit MPU6050
+ *  - Adafruit Unified Sensor
+ *  - Adafruit BusIO
  */
 
-#include <Adafruit_MPU6050.h>
-#include <Adafruit_Sensor.h>
 #include <Wire.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_MPU6050.h>
 
-// Pin definitions for ultrasonic sensor
+// Ultrasonic pins (change if needed)
 #define TRIG_PIN 7
 #define ECHO_PIN 8
 
-// Initialize MPU6050
+
 Adafruit_MPU6050 mpu;
 
-// Variables to store MPU6050 data
-float accelX, accelY, accelZ;
-float gyroX, gyroY, gyroZ;
-float temperature;
+float duration,distance;
 
 void setup() {
-  // Initialize serial communication
   Serial.begin(9600);
-  
-  // Wait for serial to be ready
-  delay(1000);
-  
-  // Initialize MPU6050
-  if (!mpu.begin()) {
-    Serial.println("{\"error\":\"MPU6050 not found\"}");
-    while (1) {
-      delay(1000);
+  delay(400);
+
+  // Ultrasonic pins
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  // Try MPU6050 at 0x68 then 0x69
+  if (!mpu.begin(0x68)) {
+    if (!mpu.begin(0x69)) {
+      Serial.println("{\"error\":\"MPU6050 not found (0x68/0x69)\"}");
+      while (1) { delay(1000); }
     }
   }
-  
+
   // Configure MPU6050
   mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
-  
-  // Initialize ultrasonic sensor pins
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-  
-  Serial.println("{\"status\":\"Arduino Ready\"}");
-  delay(1000);
+
+  Serial.println("{\"status\":\"MPU6050 + Ultrasonic Ready\"}");
+  delay(300);
 }
 
 void loop() {
-  // Read MPU6050 sensor
-  sensors_event_t a, g, temp;
-  mpu.getEvent(&a, &g, &temp);
-  
-  // Store acceleration values (m/s²)
-  accelX = a.acceleration.x;
-  accelY = a.acceleration.y;
-  accelZ = a.acceleration.z;
-  
-  // Store gyroscope values (rad/s)
-  gyroX = g.gyro.x;
-  gyroY = g.gyro.y;
-  gyroZ = g.gyro.z;
-  
-  // Store temperature (°C)
-  temperature = temp.temperature;
-  
-  // Read distance from ultrasonic sensor
-  float distance = readUltrasonic();
-  
-  // Send data as JSON
-  // Format: {"accelX":X,"accelY":Y,"accelZ":Z,"gyroX":X,"gyroY":Y,"gyroZ":Z,"temp":T,"dist":D}
-  Serial.print("{\"accelX\":");
-  Serial.print(accelX, 2);
-  Serial.print(",\"accelY\":");
-  Serial.print(accelY, 2);
-  Serial.print(",\"accelZ\":");
-  Serial.print(accelZ, 2);
-  Serial.print(",\"gyroX\":");
-  Serial.print(gyroX, 2);
-  Serial.print(",\"gyroY\":");
-  Serial.print(gyroY, 2);
-  Serial.print(",\"gyroZ\":");
-  Serial.print(gyroZ, 2);
-  Serial.print(",\"temp\":");
-  Serial.print(temperature, 1);
-  Serial.print(",\"dist\":");
-  Serial.print(distance, 1);
+  // Read MPU6050
+  sensors_event_t a, g, t;
+  mpu.getEvent(&a, &g, &t);
+
+  // Read HC-SR04 (cm)
+  float distCM = readUltrasonicCM();
+
+  // Output JSON
+  Serial.print("{\"accelX\":"); Serial.print(a.acceleration.x, 2);
+  Serial.print(",\"accelY\":"); Serial.print(a.acceleration.y, 2);
+  Serial.print(",\"accelZ\":"); Serial.print(a.acceleration.z, 2);
+  Serial.print(",\"gyroX\":");  Serial.print(g.gyro.x, 2);
+  Serial.print(",\"gyroY\":");  Serial.print(g.gyro.y, 2);
+  Serial.print(",\"gyroZ\":");  Serial.print(g.gyro.z, 2);
+  Serial.print(",\"tempC\":");  Serial.print(t.temperature, 1);
+  Serial.print(",\"distCM\":"); Serial.print(distCM, 1);
   Serial.println("}");
-  
-  // Update every 100ms (10 Hz)
-  delay(100);
+
+  delay(100); // ~10 Hz
 }
 
-float readUltrasonic() {
-  // Send trigger pulse
+float readUltrasonicCM() {
+  // Trigger pulse
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-  
-  // Read echo pulse
-  long duration = pulseIn(ECHO_PIN, HIGH, 30000);  // 30ms timeout
-  
-  // Calculate distance in cm (speed of sound = 343 m/s = 0.0343 cm/µs)
-  // Distance = (duration / 2) * 0.0343
-  float distance = (duration / 2.0) * 0.0343;
-  
-  // Return 0 if out of range or error
-  if (distance <= 0 || distance > 400) {
-    return 0;
-  }
-  
+
+  duration = pulseIn(ECHO_PIN, HIGH);
+  distance = (duration*.0343)/2;
+
   return distance;
 }
