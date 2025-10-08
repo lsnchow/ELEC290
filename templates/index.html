@@ -555,7 +555,9 @@
                     data.tracking_status.enabled ? 'ENABLED' : 'DISABLED';
                 
                 // Update Arduino status
-                const arduinoConnected = data.arduino_data.accelX !== null;
+                const arduinoConnected = data.arduino_data && 
+                                        data.arduino_data.accelX !== null && 
+                                        data.arduino_data.accelX !== undefined;
                 document.getElementById('arduinoStatus').textContent = 
                     arduinoConnected ? 'CONNECTED' : 'DISCONNECTED';
                 

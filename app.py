@@ -21,6 +21,7 @@ motors = None
 arduino = None
 tracker = None
 control_mode = config.DEFAULT_MODE  # 'manual' or 'auto'
+current_fps = 0  # Track current FPS
 
 
 def initialize_system():
@@ -64,7 +65,7 @@ def generate_frames():
     Generator function for MJPEG streaming
     Yields frames with detection and overlays
     """
-    global detector, arduino, tracker, control_mode
+    global detector, arduino, tracker, control_mode, current_fps
     
     frame_time = time.time()
     fps = 0
@@ -94,6 +95,7 @@ def generate_frames():
             current_time = time.time()
             fps = 1 / (current_time - frame_time) if (current_time - frame_time) > 0 else 0
             frame_time = current_time
+            current_fps = fps  # Store globally for status endpoint
             
             # Add information overlay
             processed_frame = detector.add_info_overlay(
@@ -148,19 +150,24 @@ def video_feed():
 @app.route('/status')
 def status():
     """Return system status as JSON"""
-    global arduino, motors, tracker, control_mode
+    global arduino, motors, tracker, control_mode, current_fps
     
-    arduino_data = arduino.get_data() if arduino else {}
-    motor_status = motors.get_status() if motors else {}
+    arduino_data = arduino.get_data() if arduino else {
+        'accelX': None, 'accelY': None, 'accelZ': None,
+        'gyroX': None, 'gyroY': None, 'gyroZ': None,
+        'temperature': None, 'distance': None
+    }
+    motor_status = motors.get_status() if motors else {'direction': 'stopped', 'speed': 0}
     
     return jsonify({
         'status': 'running',
         'mode': control_mode,
         'camera_resolution': f"{config.CAMERA_WIDTH}x{config.CAMERA_HEIGHT}",
         'model': config.YOLO_MODEL,
-        'sensors': arduino_data,
-        'motors': motor_status,
-        'tracking_enabled': tracker.enabled if tracker else False
+        'arduino_data': arduino_data,  # Changed from 'sensors' to 'arduino_data'
+        'motor_status': motor_status,  # Changed from 'motors' to 'motor_status'
+        'tracking_status': {'enabled': tracker.enabled if tracker else False},
+        'fps': current_fps
     })
 
 @app.route('/sensor_data')
