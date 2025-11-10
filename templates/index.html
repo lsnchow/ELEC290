@@ -304,6 +304,8 @@
             border-radius: 4px;
             border: 1px solid #222;
             text-align: center;
+            display: flex;
+            flex-direction: column;
         }
         
         .aqi-label {
@@ -332,6 +334,15 @@
             border-radius: 3px;
             margin-top: 6px;
             display: inline-block;
+        }
+        
+        .mini-chart {
+            width: 100%;
+            height: 60px;
+            margin-top: 10px;
+            background: #000;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
         }
         
         .aqi-good { background: #1a4d1a; color: #4ade80; }
@@ -445,23 +456,27 @@
                         <div class="aqi-value" id="co2Value">--</div>
                         <div class="aqi-unit">ppm</div>
                         <div class="aqi-status aqi-good" id="co2Status">Good</div>
+                        <canvas class="mini-chart" id="co2Chart"></canvas>
                     </div>
                     <div class="aqi-box">
                         <div class="aqi-label">TVOC</div>
                         <div class="aqi-value" id="tvocValue">--</div>
                         <div class="aqi-unit">ppb</div>
                         <div class="aqi-status aqi-good" id="tvocStatus">Good</div>
+                        <canvas class="mini-chart" id="tvocChart"></canvas>
                     </div>
                     <div class="aqi-box">
                         <div class="aqi-label">MQ-2 Gas</div>
                         <div class="aqi-value" id="mq2Value">--</div>
                         <div class="aqi-unit">raw</div>
                         <div class="aqi-status aqi-good" id="mq2Status">Normal</div>
+                        <canvas class="mini-chart" id="mq2Chart"></canvas>
                     </div>
                     <div class="aqi-box">
                         <div class="aqi-label">Temperature</div>
                         <div class="aqi-value" id="tempValue">--</div>
                         <div class="aqi-unit">°C</div>
+                        <canvas class="mini-chart" id="tempChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -607,6 +622,9 @@
         let currentMode = 'manual';
         let sensorData = {
             temperature: [],
+            co2: [],
+            tvoc: [],
+            mq2: [],
             distance: [],
             timestamps: []
         };
@@ -788,17 +806,23 @@
                     // Add to chart data
                     const now = new Date().toLocaleTimeString();
                     sensorData.temperature.push(data.arduino_data.temperature);
+                    sensorData.co2.push(data.arduino_data.co2 || 0);
+                    sensorData.tvoc.push(data.arduino_data.tvoc || 0);
+                    sensorData.mq2.push(data.arduino_data.mq2 || 0);
                     sensorData.distance.push(data.arduino_data.distance);
                     sensorData.timestamps.push(now);
                     
                     // Keep only last MAX_DATA_POINTS
                     if (sensorData.temperature.length > MAX_DATA_POINTS) {
                         sensorData.temperature.shift();
+                        sensorData.co2.shift();
+                        sensorData.tvoc.shift();
+                        sensorData.mq2.shift();
                         sensorData.distance.shift();
                         sensorData.timestamps.shift();
                     }
                     
-                    updateChart();
+                    updateCharts();
                 }
                 
                 // Update last update time
@@ -810,36 +834,47 @@
             }
         }, 1000);
 
-        // Canvas chart
-        const canvas = document.getElementById('temperatureChart');
-        const ctx = canvas ? canvas.getContext('2d') : null;
-        
-        function updateChart() {
-            if (!ctx || sensorData.temperature.length === 0) return;
+        // Mini chart drawing function
+        function drawMiniChart(canvasId, dataArray, color, minVal, maxVal) {
+            const canvas = document.getElementById(canvasId);
+            if (!canvas || dataArray.length === 0) return;
             
+            const ctx = canvas.getContext('2d');
             const width = canvas.width = canvas.offsetWidth;
-            const height = canvas.height = 200;
+            const height = canvas.height = 60;
             
             // Clear canvas
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, width, height);
             
-            // Draw temperature line
-            ctx.strokeStyle = '#fff';
-            ctx.lineWidth = 2;
+            // Calculate range
+            const dataMin = Math.min(...dataArray, minVal);
+            const dataMax = Math.max(...dataArray, maxVal);
+            const range = dataMax - dataMin || 1;
+            
+            // Draw area fill
+            ctx.fillStyle = color + '22'; // Semi-transparent
+            ctx.beginPath();
+            ctx.moveTo(0, height);
+            
+            dataArray.forEach((val, i) => {
+                const x = (i / (MAX_DATA_POINTS - 1)) * width;
+                const y = height - ((val - dataMin) / range) * (height - 5);
+                ctx.lineTo(x, y);
+            });
+            
+            ctx.lineTo(width, height);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Draw line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
             
-            const padding = 40;
-            const chartWidth = width - 2 * padding;
-            const chartHeight = height - 2 * padding;
-            
-            const maxTemp = Math.max(...sensorData.temperature, 30);
-            const minTemp = Math.min(...sensorData.temperature, 20);
-            const tempRange = maxTemp - minTemp || 10;
-            
-            sensorData.temperature.forEach((temp, i) => {
-                const x = padding + (i / (MAX_DATA_POINTS - 1)) * chartWidth;
-                const y = height - padding - ((temp - minTemp) / tempRange) * chartHeight;
+            dataArray.forEach((val, i) => {
+                const x = (i / (MAX_DATA_POINTS - 1)) * width;
+                const y = height - ((val - dataMin) / range) * (height - 5);
                 
                 if (i === 0) {
                     ctx.moveTo(x, y);
@@ -850,32 +885,35 @@
             
             ctx.stroke();
             
-            // Draw grid
+            // Draw baseline
             ctx.strokeStyle = '#1a1a1a';
             ctx.lineWidth = 1;
-            for (let i = 0; i <= 4; i++) {
-                const y = padding + (i / 4) * chartHeight;
-                ctx.beginPath();
-                ctx.moveTo(padding, y);
-                ctx.lineTo(width - padding, y);
-                ctx.stroke();
-            }
-            
-            // Draw axes
-            ctx.strokeStyle = '#333';
-            ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(padding, padding);
-            ctx.lineTo(padding, height - padding);
-            ctx.lineTo(width - padding, height - padding);
+            ctx.moveTo(0, height - 1);
+            ctx.lineTo(width, height - 1);
             ctx.stroke();
+        }
+        
+        function updateCharts() {
+            if (sensorData.temperature.length === 0) return;
             
-            // Labels
-            ctx.fillStyle = '#666';
-            ctx.font = '11px -apple-system, sans-serif';
-            ctx.fillText('Temperature (°C)', padding, 20);
-            ctx.fillText(maxTemp.toFixed(1), 5, padding + 15);
-            ctx.fillText(minTemp.toFixed(1), 5, height - padding + 5);
+            // Temperature chart (white)
+            drawMiniChart('tempChart', sensorData.temperature, '#fff', 15, 35);
+            
+            // CO2 chart (green/yellow/red based on level)
+            const avgCO2 = sensorData.co2.reduce((a, b) => a + b, 0) / sensorData.co2.length;
+            const co2Color = avgCO2 < 800 ? '#4ade80' : (avgCO2 < 1200 ? '#fbbf24' : '#ef4444');
+            drawMiniChart('co2Chart', sensorData.co2, co2Color, 400, 1600);
+            
+            // TVOC chart (green/yellow/red based on level)
+            const avgTVOC = sensorData.tvoc.reduce((a, b) => a + b, 0) / sensorData.tvoc.length;
+            const tvocColor = avgTVOC < 220 ? '#4ade80' : (avgTVOC < 660 ? '#fbbf24' : '#ef4444');
+            drawMiniChart('tvocChart', sensorData.tvoc, tvocColor, 0, 1000);
+            
+            // MQ-2 chart (green/yellow/red based on level)
+            const avgMQ2 = sensorData.mq2.reduce((a, b) => a + b, 0) / sensorData.mq2.length;
+            const mq2Color = avgMQ2 < 300 ? '#4ade80' : (avgMQ2 < 500 ? '#fbbf24' : '#ef4444');
+            drawMiniChart('mq2Chart', sensorData.mq2, mq2Color, 0, 800);
         }
 
         // Download sensor log

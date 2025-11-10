@@ -74,41 +74,74 @@ def test_motor_direction(motor_name, in1_pin, in2_pin, ena_pin):
         in2 = OutputDevice(in2_pin, active_high=True, initial_value=False)
         ena = PWMOutputDevice(ena_pin, frequency=1000, initial_value=0.0)
         
-        # Forward
-        print(f"{motor_name} FORWARD at 50% speed...")
+        # Test 1: Forward at increasing speeds
+        print(f"\n{motor_name} FORWARD at 30% speed...")
         in1.on()
         in2.off()
-        ena.value = 0.5
-        time.sleep(3)
+        ena.value = 0.3
+        print(f"  IN1={in1_pin} HIGH, IN2={in2_pin} LOW, ENA={ena_pin} 30% PWM")
+        print(f"  Motor should spin slowly forward")
+        time.sleep(2)
+        
+        print(f"{motor_name} FORWARD at 60% speed...")
+        ena.value = 0.6
+        print(f"  IN1={in1_pin} HIGH, IN2={in2_pin} LOW, ENA={ena_pin} 60% PWM")
+        print(f"  Motor should spin faster")
+        time.sleep(2)
+        
+        print(f"{motor_name} FORWARD at 100% speed...")
+        ena.value = 1.0
+        print(f"  IN1={in1_pin} HIGH, IN2={in2_pin} LOW, ENA={ena_pin} 100% PWM")
+        print(f"  Motor should spin at full speed")
+        time.sleep(2)
         
         # Stop
-        print(f"{motor_name} STOP...")
+        print(f"\n{motor_name} STOP...")
         in1.off()
         in2.off()
         ena.value = 0.0
+        print(f"  All pins LOW - motor should stop")
         time.sleep(1)
         
-        # Backward
-        print(f"{motor_name} BACKWARD at 50% speed...")
+        # Test 2: Backward at increasing speeds
+        print(f"\n{motor_name} BACKWARD at 30% speed...")
         in1.off()
         in2.on()
-        ena.value = 0.5
-        time.sleep(3)
+        ena.value = 0.3
+        print(f"  IN1={in1_pin} LOW, IN2={in2_pin} HIGH, ENA={ena_pin} 30% PWM")
+        print(f"  Motor should spin slowly backward")
+        time.sleep(2)
+        
+        print(f"{motor_name} BACKWARD at 60% speed...")
+        ena.value = 0.6
+        print(f"  IN1={in1_pin} LOW, IN2={in2_pin} HIGH, ENA={ena_pin} 60% PWM")
+        print(f"  Motor should spin faster backward")
+        time.sleep(2)
+        
+        print(f"{motor_name} BACKWARD at 100% speed...")
+        ena.value = 1.0
+        print(f"  IN1={in1_pin} LOW, IN2={in2_pin} HIGH, ENA={ena_pin} 100% PWM")
+        print(f"  Motor should spin at full speed backward")
+        time.sleep(2)
         
         # Stop
-        print(f"{motor_name} STOP...")
+        print(f"\n{motor_name} STOP...")
         in1.off()
         in2.off()
         ena.value = 0.0
+        print(f"  All pins LOW - motor should stop")
+        time.sleep(1)
         
         in1.close()
         in2.close()
         ena.close()
         
-        print(f"✓ {motor_name} full test PASSED")
+        print(f"\n✓ {motor_name} full test PASSED")
         return True
     except Exception as e:
-        print(f"✗ {motor_name} full test FAILED: {e}")
+        print(f"\n✗ {motor_name} full test FAILED: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def main():
