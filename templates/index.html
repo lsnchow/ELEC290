@@ -414,13 +414,13 @@
     </div>
 
     <div class="header">
-        <h1>AUTONOMOUS TRACKING ROBOT</h1>
-        <p class="subtitle">YOLOv8 Human Detection · Real-time Control System</p>
+        <h1>ELEC290 AIR QUALITY MONITORING ROBOT</h1>
+        <p class="subtitle">YOLOv8 Human Detection · Real-time Air Quality Monitoring</p>
     </div>
 
     <div class="main-grid">
         <!-- Left Column: Video Feed -->
-        <div>
+        <div class="video-section">
             <div class="panel">
                 <div class="panel-title">Live Feed</div>
                 <div class="video-container">
@@ -432,9 +432,42 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Sensor Readings -->
-            <div class="panel" style="margin-top: 20px;">
+        <!-- Right Column: Sensors -->
+        <div class="sensors-section">
+            <!-- Air Quality Panel -->
+            <div class="panel">
+                <div class="panel-title">Air Quality Monitoring</div>
+                <div class="air-quality-display">
+                    <div class="aqi-box">
+                        <div class="aqi-label">CO₂</div>
+                        <div class="aqi-value" id="co2Value">--</div>
+                        <div class="aqi-unit">ppm</div>
+                        <div class="aqi-status aqi-good" id="co2Status">Good</div>
+                    </div>
+                    <div class="aqi-box">
+                        <div class="aqi-label">TVOC</div>
+                        <div class="aqi-value" id="tvocValue">--</div>
+                        <div class="aqi-unit">ppb</div>
+                        <div class="aqi-status aqi-good" id="tvocStatus">Good</div>
+                    </div>
+                    <div class="aqi-box">
+                        <div class="aqi-label">MQ-2 Gas</div>
+                        <div class="aqi-value" id="mq2Value">--</div>
+                        <div class="aqi-unit">raw</div>
+                        <div class="aqi-status aqi-good" id="mq2Status">Normal</div>
+                    </div>
+                    <div class="aqi-box">
+                        <div class="aqi-label">Temperature</div>
+                        <div class="aqi-value" id="tempValue">--</div>
+                        <div class="aqi-unit">°C</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accelerometer Panel -->
+            <div class="panel">
                 <div class="panel-title">MPU6050 Accelerometer</div>
                 <div class="sensor-grid">
                     <div class="sensor-box">
@@ -455,7 +488,8 @@
                 </div>
             </div>
 
-            <div class="panel" style="margin-top: 20px;">
+            <!-- Gyroscope Panel -->
+            <div class="panel">
                 <div class="panel-title">MPU6050 Gyroscope</div>
                 <div class="sensor-grid">
                     <div class="sensor-box">
@@ -476,80 +510,18 @@
                 </div>
             </div>
 
-            <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">Other Sensors</div>
-                <div class="sensor-grid">
-                    <div class="sensor-box">
-                        <div class="sensor-label">Temperature</div>
-                        <div class="sensor-value" id="tempValue">--</div>
-                        <div class="sensor-unit">°C</div>
-                    </div>
-                    <div class="sensor-box">
-                        <div class="sensor-label">Distance</div>
-                        <div class="sensor-value" id="distValue">--</div>
-                        <div class="sensor-unit">cm</div>
-                    </div>
-                </div>
-                
-                <!-- Charts -->
-                <div class="chart-container">
-                    <canvas id="temperatureChart" width="100%" height="200"></canvas>
-                </div>
-                
-                <!-- Data Logging -->
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #222;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                        <div style="font-size: 0.85em; color: #999;">
-                            <span id="logEntriesCount">0</span> entries logged
-                        </div>
-                        <button class="btn btn-small" onclick="clearLog()" style="padding: 6px 12px; font-size: 0.8em;">Clear Log</button>
-                    </div>
-                    <button class="btn" onclick="downloadLog()" style="width: 100%;">
-                        📥 Download Sensor Log (Excel)
-                    </button>
-                    <div id="logStats" style="margin-top: 10px; font-size: 0.75em; color: #666; line-height: 1.6;"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Right Column: Controls -->
-        <div>
-            <!-- Mode Control -->
+            <!-- Distance Sensor -->
             <div class="panel">
-                <div class="panel-title">Control Mode</div>
-                <div class="mode-buttons">
-                    <button class="btn" id="btnManual" onclick="setMode('manual')">Manual</button>
-                    <button class="btn" id="btnAuto" onclick="setMode('auto')">Auto Track</button>
-                </div>
-            </div>
-
-            <!-- WASD Controls -->
-            <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">Manual Control</div>
-                <div class="wasd-grid">
-                    <button class="btn btn-w" id="btnW">W<br><span style="font-size:0.7em">Forward</span></button>
-                    <button class="btn btn-a" id="btnA">A<br><span style="font-size:0.7em">Left</span></button>
-                    <button class="btn btn-s" id="btnS">S<br><span style="font-size:0.7em">Back</span></button>
-                    <button class="btn btn-d" id="btnD">D<br><span style="font-size:0.7em">Right</span></button>
-                </div>
-                <button class="btn emergency" onclick="emergencyStop()">EMERGENCY STOP</button>
-            </div>
-
-            <!-- Motor Status -->
-            <div class="panel" style="margin-top: 20px;">
-                <div class="panel-title">Motor Status</div>
-                <div class="info-row">
-                    <span class="info-label">Direction</span>
-                    <span class="info-value" id="motorDirection">STOPPED</span>
-                </div>
-                <div class="info-row">
-                    <span class="info-label">Speed</span>
-                    <span class="info-value" id="motorSpeed">0%</span>
+                <div class="panel-title">Distance Sensor</div>
+                <div class="sensor-box">
+                    <div class="sensor-label">Ultrasonic Distance</div>
+                    <div class="sensor-value" id="distValue">--</div>
+                    <div class="sensor-unit">cm</div>
                 </div>
             </div>
 
             <!-- System Info -->
-            <div class="panel" style="margin-top: 20px;">
+            <div class="panel">
                 <div class="panel-title">System Status</div>
                 <div class="info-row">
                     <span class="info-label">Arduino</span>
@@ -560,9 +532,55 @@
                     <span class="info-value" id="trackingStatus">--</span>
                 </div>
                 <div class="info-row">
+                    <span class="info-label">Motor Direction</span>
+                    <span class="info-value" id="motorDirection">STOPPED</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Motor Speed</span>
+                    <span class="info-value" id="motorSpeed">0%</span>
+                </div>
+                <div class="info-row">
                     <span class="info-label">Last Update</span>
                     <span class="info-value" id="lastUpdate" style="color: #666;">--</span>
                 </div>
+            </div>
+
+            <!-- Data Logging -->
+            <div class="panel">
+                <div class="panel-title">Data Logging</div>
+                <div style="font-size: 0.85em; color: #999; margin-bottom: 12px;">
+                    <span id="logEntriesCount">0</span> entries logged
+                </div>
+                <button class="btn" onclick="downloadLog()" style="width: 100%; margin-bottom: 10px;">
+                    📥 Download Sensor Log (CSV)
+                </button>
+                <button class="btn btn-small" onclick="clearLog()" style="width: 100%;">Clear Log</button>
+                <div id="logStats" style="margin-top: 10px; font-size: 0.75em; color: #666; line-height: 1.6;"></div>
+            </div>
+        </div>
+
+        <!-- Bottom: Controls -->
+        <div class="controls-section">
+            <div class="controls-bar">
+                <div class="controls-group">
+                    <span style="color: #999; font-size: 0.85em; margin-right: 8px;">Mode:</span>
+                    <button class="btn btn-compact" id="btnManual" onclick="setMode('manual')">Manual</button>
+                    <button class="btn btn-compact" id="btnAuto" onclick="setMode('auto')">Auto Track</button>
+                </div>
+                
+                <div class="controls-divider"></div>
+                
+                <div class="controls-group">
+                    <span style="color: #999; font-size: 0.85em; margin-right: 8px;">Movement:</span>
+                    <button class="btn btn-compact" id="btnW">W</button>
+                    <button class="btn btn-compact" id="btnA">A</button>
+                    <button class="btn btn-compact" id="btnS">S</button>
+                    <button class="btn btn-compact" id="btnD">D</button>
+                </div>
+                
+                <div class="controls-divider"></div>
+                
+                <button class="btn emergency" onclick="emergencyStop()" style="padding: 10px 24px;">⚠ EMERGENCY STOP</button>
             </div>
         </div>
     </div>
@@ -717,6 +735,55 @@
                         data.arduino_data.temperature.toFixed(1);
                     document.getElementById('distValue').textContent = 
                         data.arduino_data.distance.toFixed(1);
+                    
+                    // Air quality data
+                    if (data.arduino_data.co2 !== undefined) {
+                        const co2 = data.arduino_data.co2;
+                        document.getElementById('co2Value').textContent = co2;
+                        const co2Status = document.getElementById('co2Status');
+                        if (co2 < 800) {
+                            co2Status.textContent = 'Good';
+                            co2Status.className = 'aqi-status aqi-good';
+                        } else if (co2 < 1200) {
+                            co2Status.textContent = 'Moderate';
+                            co2Status.className = 'aqi-status aqi-moderate';
+                        } else {
+                            co2Status.textContent = 'Poor';
+                            co2Status.className = 'aqi-status aqi-poor';
+                        }
+                    }
+                    
+                    if (data.arduino_data.tvoc !== undefined) {
+                        const tvoc = data.arduino_data.tvoc;
+                        document.getElementById('tvocValue').textContent = tvoc;
+                        const tvocStatus = document.getElementById('tvocStatus');
+                        if (tvoc < 220) {
+                            tvocStatus.textContent = 'Good';
+                            tvocStatus.className = 'aqi-status aqi-good';
+                        } else if (tvoc < 660) {
+                            tvocStatus.textContent = 'Moderate';
+                            tvocStatus.className = 'aqi-status aqi-moderate';
+                        } else {
+                            tvocStatus.textContent = 'Poor';
+                            tvocStatus.className = 'aqi-status aqi-poor';
+                        }
+                    }
+                    
+                    if (data.arduino_data.mq2 !== undefined) {
+                        const mq2 = data.arduino_data.mq2;
+                        document.getElementById('mq2Value').textContent = mq2;
+                        const mq2Status = document.getElementById('mq2Status');
+                        if (mq2 < 300) {
+                            mq2Status.textContent = 'Normal';
+                            mq2Status.className = 'aqi-status aqi-good';
+                        } else if (mq2 < 500) {
+                            mq2Status.textContent = 'Elevated';
+                            mq2Status.className = 'aqi-status aqi-moderate';
+                        } else {
+                            mq2Status.textContent = 'High';
+                            mq2Status.className = 'aqi-status aqi-poor';
+                        }
+                    }
                     
                     // Add to chart data
                     const now = new Date().toLocaleTimeString();
