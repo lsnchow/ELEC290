@@ -1,6 +1,7 @@
 """
 Arduino Serial Communication
-Reads sensor data (gas, temperature, distance) from Arduino via serial port
+Reads sensor data from Arduino UNO R4 WiFi
+Sensors: HC-SR04, MPU6050, MQ-2, CCS811 (air quality)
 """
 import serial
 import json
@@ -9,13 +10,13 @@ import time
 
 
 class ArduinoSerial:
-    def __init__(self, port='/dev/ttyUSB0', baudrate=9600, debug=False):
+    def __init__(self, port='/dev/ttyUSB0', baudrate=115200, debug=False):
         """
         Initialize Arduino serial communication
         
         Args:
             port: Serial port (default: /dev/ttyUSB0, could be /dev/ttyACM0)
-            baudrate: Baud rate (default: 9600)
+            baudrate: Baud rate (default: 115200)
             debug: Enable debug output (default: False)
         """
         self.port = port
@@ -25,7 +26,7 @@ class ArduinoSerial:
         self.thread = None
         self.debug = debug
         
-        # Sensor data (MPU6050 + ultrasonic)
+        # Sensor data - Motion & Environment
         self.accel_x = 0
         self.accel_y = 0
         self.accel_z = 0
@@ -34,6 +35,12 @@ class ArduinoSerial:
         self.gyro_z = 0
         self.temperature = 0
         self.distance = 0
+        
+        # Air Quality Sensors (NEW)
+        self.mq2 = 0        # Gas sensor (0-1023)
+        self.co2 = 0        # CO2 in ppm
+        self.tvoc = 0       # Total Volatile Organic Compounds in ppb
+        
         self.last_update = time.time()
         
         # Try multiple common ports if default fails
@@ -101,24 +108,34 @@ class ArduinoSerial:
                     if self.debug:
                         print(f"[Arduino] Raw: {repr(line)}")
                     
-                    # Expected format: {"accelX":X,"accelY":Y,"accelZ":Z,"gyroX":X,"gyroY":Y,"gyroZ":Z,"tempC":T,"distCM":D}
+                    # Expected format: {"distCM":X,"mq2":X,"accelX":X,...,"co2":X,"tvoc":X}
                     try:
                         data = json.loads(line)
+                        # Motion sensors
                         self.accel_x = data.get('accelX', 0)
                         self.accel_y = data.get('accelY', 0)
                         self.accel_z = data.get('accelZ', 0)
                         self.gyro_x = data.get('gyroX', 0)
                         self.gyro_y = data.get('gyroY', 0)
                         self.gyro_z = data.get('gyroZ', 0)
-                        self.temperature = data.get('tempC', data.get('temp', 0))  # Support both tempC and temp
-                        self.distance = data.get('distCM', data.get('dist', 0))  # Support both distCM and dist
+                        
+                        # Environmental sensors
+                        self.temperature = data.get('tempC', data.get('temp', 0))
+                        self.distance = data.get('distCM', data.get('dist', 0))
+                        
+                        # Air quality sensors (NEW)
+                        self.mq2 = data.get('mq2', 0)
+                        self.co2 = data.get('co2', -1)
+                        self.tvoc = data.get('tvoc', -1)
+                        
                         self.last_update = time.time()
                         lines_read += 1
                         
                         if self.debug:
                             print(f"[Arduino] Parsed: accel=({self.accel_x:.2f},{self.accel_y:.2f},{self.accel_z:.2f}), "
                                   f"gyro=({self.gyro_x:.2f},{self.gyro_y:.2f},{self.gyro_z:.2f}), "
-                                  f"temp={self.temperature:.1f}, dist={self.distance:.1f}")
+                                  f"temp={self.temperature:.1f}, dist={self.distance:.1f}, "
+                                  f"mq2={self.mq2}, co2={self.co2:.0f}ppm, tvoc={self.tvoc:.0f}ppb")
                             
                     except json.JSONDecodeError as e:
                         if self.debug:
@@ -172,20 +189,35 @@ class ArduinoSerial:
             self.gyro_z = round(random.uniform(-0.5, 0.5), 2)
             self.temperature = round(random.uniform(20, 30), 1)
             self.distance = round(random.uniform(5, 50), 1)
+            
+            # Simulate air quality sensors
+            self.mq2 = random.randint(100, 600)
+            self.co2 = round(random.uniform(400, 1200), 0)
+            self.tvoc = round(random.uniform(0, 500), 0)
+            
             self.last_update = time.time()
             time.sleep(0.05)  # Faster simulation updates - 20 Hz
     
     def get_data(self):
-        """Get current sensor data"""
+        """Get current sensor data including air quality"""
         return {
+            # Motion sensors
             'accelX': self.accel_x,
             'accelY': self.accel_y,
             'accelZ': self.accel_z,
             'gyroX': self.gyro_x,
             'gyroY': self.gyro_y,
             'gyroZ': self.gyro_z,
+            
+            # Environmental sensors
             'temperature': self.temperature,
             'distance': self.distance,
+            
+            # Air quality sensors
+            'mq2': self.mq2,
+            'co2': self.co2,
+            'tvoc': self.tvoc,
+            
             'timestamp': self.last_update
         }
     

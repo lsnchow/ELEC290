@@ -39,12 +39,16 @@ class SensorLogger:
                 'datetime_str': timestamp.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],  # Include milliseconds
                 'temperature': arduino_data.get('temperature', 0),
                 'distance': arduino_data.get('distance', 0),
-                'accel_x': arduino_data.get('accel_x', 0),
-                'accel_y': arduino_data.get('accel_y', 0),
-                'accel_z': arduino_data.get('accel_z', 0),
-                'gyro_x': arduino_data.get('gyro_x', 0),
-                'gyro_y': arduino_data.get('gyro_y', 0),
-                'gyro_z': arduino_data.get('gyro_z', 0),
+                'accel_x': arduino_data.get('accelX', 0),
+                'accel_y': arduino_data.get('accelY', 0),
+                'accel_z': arduino_data.get('accelZ', 0),
+                'gyro_x': arduino_data.get('gyroX', 0),
+                'gyro_y': arduino_data.get('gyroY', 0),
+                'gyro_z': arduino_data.get('gyroZ', 0),
+                # Air quality data (NEW)
+                'mq2': arduino_data.get('mq2', 0),
+                'co2': arduino_data.get('co2', -1),
+                'tvoc': arduino_data.get('tvoc', -1),
             }
             self.data_log.append(entry)
     
@@ -61,7 +65,7 @@ class SensorLogger:
             
             # CSV header
             csv_lines = [
-                "Timestamp,Temperature (°C),Distance (cm),Accel X (m/s²),Accel Y (m/s²),Accel Z (m/s²),Gyro X (°/s),Gyro Y (°/s),Gyro Z (°/s)"
+                "Timestamp,Temperature (°C),Distance (cm),Accel X (m/s²),Accel Y (m/s²),Accel Z (m/s²),Gyro X (°/s),Gyro Y (°/s),Gyro Z (°/s),MQ-2 Gas,CO2 (ppm),TVOC (ppb)"
             ]
             
             # Data rows
@@ -75,7 +79,10 @@ class SensorLogger:
                     f"{entry['accel_z']:.2f},"
                     f"{entry['gyro_x']:.2f},"
                     f"{entry['gyro_y']:.2f},"
-                    f"{entry['gyro_z']:.2f}"
+                    f"{entry['gyro_z']:.2f},"
+                    f"{entry['mq2']},"
+                    f"{entry['co2']:.0f},"
+                    f"{entry['tvoc']:.0f}"
                 )
                 csv_lines.append(row)
             

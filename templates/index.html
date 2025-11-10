@@ -42,16 +42,56 @@
         
         .main-grid {
             display: grid;
-            grid-template-columns: 1fr 380px;
+            grid-template-columns: 1.3fr 1fr;
+            grid-template-rows: 1fr auto;
             gap: 20px;
             padding: 20px;
-            max-width: 1800px;
+            max-width: 1900px;
             margin: 0 auto;
+            height: calc(100vh - 120px);
+        }
+        
+        .video-section {
+            grid-column: 1;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sensors-section {
+            grid-column: 2;
+            grid-row: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            overflow-y: auto;
+        }
+        
+        .controls-section {
+            grid-column: 1 / -1;
+            grid-row: 2;
         }
         
         @media (max-width: 1200px) {
             .main-grid {
                 grid-template-columns: 1fr;
+                grid-template-rows: auto auto auto;
+                height: auto;
+            }
+            
+            .video-section {
+                grid-column: 1;
+                grid-row: 1;
+            }
+            
+            .sensors-section {
+                grid-column: 1;
+                grid-row: 2;
+            }
+            
+            .controls-section {
+                grid-column: 1;
+                grid-row: 3;
             }
         }
         
@@ -160,6 +200,37 @@
             font-size: 0.8em;
         }
         
+        /* Discrete controls bar at bottom */
+        .controls-bar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px 20px;
+            background: #0a0a0a;
+            border: 1px solid #222;
+            border-radius: 4px;
+            flex-wrap: wrap;
+        }
+        
+        .controls-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .controls-divider {
+            width: 1px;
+            height: 40px;
+            background: #333;
+        }
+        
+        .btn-compact {
+            padding: 10px 18px;
+            min-width: 60px;
+            font-size: 0.85em;
+        }
+        
         .wasd-grid {
             display: grid;
             grid-template-areas:
@@ -216,8 +287,56 @@
             border-radius: 4px;
             border: 1px solid #222;
             margin-top: 15px;
-            height: 250px;
+            height: 220px;
         }
+        
+        /* Air quality indicators */
+        .air-quality-display {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        
+        .aqi-box {
+            background: #000;
+            padding: 16px;
+            border-radius: 4px;
+            border: 1px solid #222;
+            text-align: center;
+        }
+        
+        .aqi-label {
+            font-size: 0.75em;
+            color: #999;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        
+        .aqi-value {
+            font-size: 1.8em;
+            font-weight: 600;
+            color: #fff;
+            margin: 5px 0;
+        }
+        
+        .aqi-unit {
+            font-size: 0.7em;
+            color: #666;
+        }
+        
+        .aqi-status {
+            font-size: 0.7em;
+            padding: 4px 8px;
+            border-radius: 3px;
+            margin-top: 6px;
+            display: inline-block;
+        }
+        
+        .aqi-good { background: #1a4d1a; color: #4ade80; }
+        .aqi-moderate { background: #4d4d1a; color: #fbbf24; }
+        .aqi-poor { background: #4d1a1a; color: #ef4444; }
         
         .status-bar {
             background: #0a0a0a;

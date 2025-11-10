@@ -34,7 +34,7 @@ MIN_SPEED = 30  # Minimum speed to overcome friction
 
 # Arduino serial settings
 ARDUINO_PORT = '/dev/ttyUSB0'  # Try /dev/ttyACM0 if this doesn't work
-ARDUINO_BAUD = 9600
+ARDUINO_BAUD = 115200  # Updated for Arduino UNO R4 WiFi
 ARDUINO_DEBUG = True  # Set to True for detailed Arduino debugging
 
 # Auto-tracking settings
