@@ -1,16 +1,10 @@
 /*
-  Combined Sensor Reader - JSON Output
+  Combined Sensor Reader
   Arduino UNO R4 WiFi
   Sensors: HC-SR04, Adafruit MPU6050, MQ-2, CCS811 (CJMCU-811)
-  
-  Pin Configuration:
-  - HC-SR04: TRIG=D9, ECHO=D10
-  - MQ-2: A0
-  - MPU6050: I2C (SDA=A4, SCL=A5)
-  - CCS811: I2C (SDA=A4, SCL=A5, ADDR=0x5A)
-  
-  Output: JSON at 115200 baud, ~20 Hz
 */
+
+
 
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>
@@ -22,13 +16,13 @@
 #define MQ2_PIN A0
 #define CCS811_ADDR 0x5A
 
-// Sensor objects
+// Objects
 Adafruit_MPU6050 mpu;
 CCS811 airSensor(CCS811_ADDR);
 
 void setup() {
   Serial.begin(115200);
-  delay(500);
+  Serial.println("Starting sensors...");
 
   // --- HC-SR04 ---
   pinMode(TRIG_PIN, OUTPUT);
@@ -42,40 +36,43 @@ void setup() {
 
   // --- MPU6050 ---
   if (!mpu.begin()) {
-    Serial.println("{\"error\":\"MPU6050 not found\"}");
-    while (1) { delay(1000); }
+    Serial.println("Failed to find MPU6050 chip!");
+    while (1) { delay(10); }
   }
+  Serial.println("MPU6050 connected.");
   mpu.setAccelerometerRange(MPU6050_RANGE_8_G);
   mpu.setGyroRange(MPU6050_RANGE_500_DEG);
   mpu.setFilterBandwidth(MPU6050_BAND_21_HZ);
 
   // --- CCS811 ---
   if (!airSensor.begin()) {
-    Serial.println("{\"warning\":\"CCS811 not detected, air quality disabled\"}");
+    Serial.println("CCS811 not detected! Check wiring (VCC=3.3V, WAK=GND).");
+  } else {
+    Serial.println("CCS811 ready.");
   }
 
-  Serial.println("{\"status\":\"All sensors ready\"}");
-  delay(500);
+  Serial.println("All sensors initialized.\n");
+  delay(1000);
 }
 
 void loop() {
-  // ---- HC-SR04 Distance ----
+  // ---- HC-SR04 ----
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
-  long duration = pulseIn(ECHO_PIN, HIGH, 30000); // 30ms timeout
-  float distance = (duration > 0) ? (duration * 0.034 / 2) : 999;
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  float distance = duration * 0.034 / 2;
 
-  // ---- MQ-2 Gas Sensor ----
+  // ---- MQ-2 ----
   int mq2Value = analogRead(MQ2_PIN);
 
   // ---- MPU6050 ----
   sensors_event_t a, g, temp;
   mpu.getEvent(&a, &g, &temp);
 
-  // ---- CCS811 Air Quality ----
+  // ---- CCS811 ----
   float co2 = -1, tvoc = -1;
   if (airSensor.dataAvailable()) {
     airSensor.readAlgorithmResults();
@@ -83,7 +80,7 @@ void loop() {
     tvoc = airSensor.getTVOC();
   }
 
-  // ---- JSON Output ----
+  // ---- Serial Output ----
   Serial.print("{\"distCM\":");
   Serial.print(distance, 1);
   
@@ -114,5 +111,5 @@ void loop() {
   
   Serial.println("}");
 
-  delay(50); // ~20 Hz update rate
+  delay(1000);
 }
