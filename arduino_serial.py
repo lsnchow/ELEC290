@@ -202,9 +202,9 @@ class ArduinoSerial:
         """Get current sensor data including air quality"""
         return {
             # Motion sensors
-            'accelX': self.accel_x,
+            'accelX': self.accel_z,
             'accelY': self.accel_y,
-            'accelZ': self.accel_z,
+            'accelZ': self.accel_x,
             'gyroX': self.gyro_x,
             'gyroY': self.gyro_y,
             'gyroZ': self.gyro_z,
