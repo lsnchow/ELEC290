@@ -377,6 +377,28 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        @keyframes slideDown {
+            from {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateX(-50%) translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(-50%) translateY(-100px);
+                opacity: 0;
+            }
+        }
         
         .connection-status {
             position: fixed;
@@ -704,8 +726,46 @@
 
         // Emergency stop
         function emergencyStop() {
+            console.log('🛑 Emergency stop activated by user');
             socket.emit('emergency_stop');
             setMode('manual');
+        }
+
+        // Listen for emergency stop events
+        socket.on('emergency_stop_triggered', function(data) {
+            console.log('⚠️ Emergency stop triggered:', data);
+            const reason = data.reason === 'user_activated' ? 'User Activated' : 
+                          data.reason === 'obstacle_too_close' ? `Obstacle at ${data.distance.toFixed(1)}cm` : 
+                          data.reason;
+            showEmergencyAlert(reason);
+        });
+
+        // Show emergency alert banner
+        function showEmergencyAlert(reason) {
+            const alertDiv = document.createElement('div');
+            alertDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #d32f2f;
+                color: white;
+                padding: 15px 30px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                font-size: 16px;
+                font-weight: bold;
+                z-index: 10000;
+                animation: slideDown 0.3s ease-out;
+            `;
+            alertDiv.innerHTML = `🛑 EMERGENCY STOP: ${reason}`;
+            document.body.appendChild(alertDiv);
+
+            // Remove after 5 seconds
+            setTimeout(() => {
+                alertDiv.style.animation = 'slideUp 0.3s ease-out';
+                setTimeout(() => alertDiv.remove(), 300);
+            }, 5000);
         }
 
         // Fetch status updates
