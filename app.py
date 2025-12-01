@@ -111,6 +111,14 @@ def generate_frames():
                     detections = []
                 
                 tracking_status = tracker.process_detection(detections, human_count)
+                
+                # Check for emergency stop condition
+                if tracking_status.get('status') == 'EMERGENCY_STOP':
+                    socketio.emit('emergency_stop_triggered', {
+                        'reason': tracking_status.get('reason'),
+                        'distance': tracking_status.get('distance'),
+                        'threshold': tracking_status.get('threshold')
+                    })
             
             # Calculate FPS
             current_time = time.time()
@@ -316,12 +324,13 @@ def handle_emergency_stop():
     """Emergency stop - stops motors and switches to manual"""
     global control_mode, motors, tracker
     
+    print("🛑 EMERGENCY STOP activated by user")
     motors.stop()
     control_mode = 'manual'
     tracker.disable()
     
-    print("EMERGENCY STOP activated")
     emit('mode_changed', {'mode': 'manual', 'emergency': True}, broadcast=True)
+    emit('emergency_stop_triggered', {'reason': 'user_activated', 'distance': None}, broadcast=True)
 
 
 def cleanup():

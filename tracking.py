@@ -67,10 +67,12 @@ class PersonTracker:
         # EMERGENCY STOP: Ultrasonic < 20cm
         if distance < self.EMERGENCY_STOP_DISTANCE and distance > 0:
             self.motors.stop()
+            print(f"⚠️  EMERGENCY STOP: Obstacle at {distance:.1f}cm (< {self.EMERGENCY_STOP_DISTANCE}cm)")
             return {
                 "status": "EMERGENCY_STOP",
                 "reason": "obstacle_too_close",
-                "distance": distance
+                "distance": distance,
+                "threshold": self.EMERGENCY_STOP_DISTANCE
             }
         
         # No person detected
